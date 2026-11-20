@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Station Ledger</title>
+<link rel="manifest" href="manifest.webmanifest">
+<meta name="theme-color" content="#2a3f9e">
+<link rel="icon" href="icon-192.png">
+<link rel="apple-touch-icon" href="icon-192.png">
+<style>
+:root{--bg:#f2f5f9;--card:#fff;--ink:#16224a;--mute:#5d6786;--rule:#cfd8ea;--brand:#2a3f9e;--ok:#12794a;--bad:#c2261f;--warn:#b86a00;--bar:#2a3f9e;
+color-scheme:light;box-sizing:border-box;padding-top:env(safe-area-inset-top,0px);padding-bottom:env(safe-area-inset-bottom,0px)}
+@media (prefers-color-scheme:dark){:root:not([data-theme="light"]){--bg:#10152b;--card:#1a2140;--ink:#e8ecfa;--mute:#9aa5cc;--rule:#2f3a68;--brand:#8da2ff;--ok:#4cc38a;--bad:#ff7a70;--warn:#f0a53c;--bar:#8da2ff;color-scheme:dark}}
+:root[data-theme="dark"]{--bg:#10152b;--card:#1a2140;--ink:#e8ecfa;--mute:#9aa5cc;--rule:#2f3a68;--brand:#8da2ff;--ok:#4cc38a;--bad:#ff7a70;--warn:#f0a53c;--bar:#8da2ff;color-scheme:dark}
+*{box-sizing:border-box}html{scroll-padding-top:env(safe-area-inset-top,0px)}
+body{margin:0;background:var(--bg);color:var(--ink);font:16px/1.45 "Atkinson Hyperlegible",system-ui,sans-serif;max-width:760px;margin-inline:auto;padding:14px}
+h1{font-size:22px;margin:4px 0 12px}h2{font-size:17px;margin:0 0 10px}
+nav{display:flex;gap:6px;margin-bottom:14px}
+nav button{flex:1;padding:11px 6px;border:1.5px solid var(--rule);background:var(--card);color:var(--ink);border-radius:10px;font:inherit;font-weight:700}
+nav button.on{background:var(--brand);border-color:var(--brand);color:var(--bg)}
+.card{background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:14px;margin-bottom:14px}
+.kpis{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:14px}
+.kpi{background:var(--card);border:1px solid var(--rule);border-radius:12px;padding:12px}
+.kpi small{color:var(--mute);display:block}.kpi b{font-size:20px}
+.neg{color:var(--bad)}.pos{color:var(--ok)}
+label{display:block;font-size:14px;color:var(--mute);margin:10px 0 4px}
+input,select{width:100%;padding:11px;border:1.5px solid var(--rule);border-radius:9px;background:var(--bg);color:var(--ink);font:inherit}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.btn{padding:12px 16px;border:0;border-radius:10px;background:var(--brand);color:var(--bg);font:inherit;font-weight:700;width:100%;margin-top:14px}
+.btn.alt{background:transparent;color:var(--brand);border:1.5px solid var(--brand)}
+.sum{border-left:4px solid var(--brand);padding:8px 12px;margin-top:12px;background:var(--bg);border-radius:0 8px 8px 0}
+.sum div{display:flex;justify-content:space-between;gap:10px}
+.tw{overflow-x:auto}table{border-collapse:collapse;width:100%;min-width:560px;font-size:14px}
+th,td{padding:8px 6px;border-bottom:1px solid var(--rule);text-align:right;white-space:nowrap}th:first-child,td:first-child{text-align:left}th{color:var(--mute);font-weight:700}
+.flag{display:block;font-size:12px;color:var(--warn);white-space:normal;text-align:left;max-width:230px}
+.x{background:none;border:0;color:var(--bad);font:inherit;padding:2px 6px}
+.mix{display:flex;height:16px;border-radius:8px;overflow:hidden;margin:8px 0}.leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--mute)}
+.leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
+.hide{display:none}#tank>.card:nth-child(n+3){display:none}.rep{user-select:all;-webkit-user-select:all;white-space:pre-wrap;background:var(--bg);border:1px solid var(--rule);border-radius:9px;padding:12px;font-size:14px}.note{color:var(--mute);font-size:13px;margin-top:8px}
+</style>
+</head>
+<body>
+<h1>Station Ledger</h1>
+<nav><button data-t="dash" class="on">Dashboard</button><button data-t="add">Add day</button><button data-t="rep">Report</button><button data-t="tank">Tank</button><button data-t="bk">Backup</button></nav>
+
+<section id="dash"></section>
+
+<section id="add" class="hide">
+<div class="card"><h2>Add a day</h2>
+<label>Date</label><input type="date" id="f_date">
+<div class="row"><div><label>Opening meter</label><input id="f_open" inputmode="decimal"></div><div><label>Closing meter</label><input id="f_close" inputmode="decimal"></div></div>
+<label>Price per kg (₦)</label><input id="f_price" inputmode="decimal">
+<label>Cash (you can type 65k+13400+9600)</label><input id="f_cash">
+<div class="row"><div><label>POS</label><input id="f_pos"></div><div><label>Transfer</label><input id="f_tr"></div></div>
+
+
+<div id="items"></div>
+
+
+<label>Note (optional)</label><input id="f_note">
+<div class="sum" id="prev"></div>
+<button class="btn" id="save">Save day</button>
+<button class="btn alt" id="cancel" style="display:none">Cancel edit</button>
+<div class="note" id="msg"></div></div>
+</section>
+
+<section id="rep" class="hide">
+<div class="card"><h2>Report for your boss</h2>
+<div class="row"><div><label>From</label><input type="date" id="r_from"></div><div><label>To</label><input type="date" id="r_to"></div></div>
+<div class="row" style="margin-top:10px"><button class="btn alt" id="r_q3" style="margin:0">Last 3 days</button><button class="btn alt" id="r_q7" style="margin:0">Last 7 days</button></div>
+<button class="btn alt" id="r_all" style="margin-top:10px">All days</button>
+<label>Boss WhatsApp number</label><input id="r_num" inputmode="tel" placeholder="e.g. 08012345678">
+<div class="note">Saved on this phone. The Send button will open his chat with the record ready.</div>
+<h2 style="margin-top:16px">Message</h2><div class="rep" id="r_out"></div>
+<button class="btn" id="r_copy">Copy report</button>
+<a class="btn alt" id="r_wa" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none">Send on WhatsApp</a>
+<div class="note" id="r_msg"></div></div>
+</section>
+
+<section id="bk" class="hide"><div class="card"><h2>Backup and restore</h2>
+<div class="note">Your records are saved on this phone. Copy a backup now and then and keep it somewhere safe, for example in your WhatsApp saved messages.</div>
+<button class="btn" id="bk_copy">Copy backup</button>
+<label>Restore: paste a backup here</label><textarea id="bk_in" rows="4" style="width:100%;padding:11px;border:1.5px solid var(--rule);border-radius:9px;background:var(--bg);color:var(--ink);font:inherit"></textarea>
+<button class="btn alt" id="bk_res">Restore from backup</button><div class="note" id="bk_msg"></div></div></section>
+
+<section id="tank" class="hide">
+<div class="card"><h2>Gas tank in tonnes</h2>
+<div class="row"><div><label>Tonnes put in</label><input id="g_t" inputmode="decimal" value="2.5"></div><div><label>Gauge before (%)</label><input id="g_p0" inputmode="decimal" value="20"></div></div>
+<label>Gauge after filling (%)</label><input id="g_p" inputmode="decimal" value="56">
+<div class="sum" id="g_cap"></div>
+<div class="row"><div><label>Gauge reading now (%)</label><input id="g_now" inputmode="decimal"></div><div><label>Fill up to (%)</label><input id="g_tg" inputmode="decimal" value="80"></div></div>
+<div class="sum" id="g_out">Enter the gauge reading.</div>
+<div class="note">The first three boxes set the tank size from one fill, so they are saved. These are set from your 2.5 tonnes fill (20% to 56%). Check the tonnes against the delivery ticket when you can. This assumes the gauge reads evenly by volume.</div></div>
+<div class="card"><h2>Gas left in the tank</h2>
+<div class="sum" id="gl_sum"></div>
+<h2 style="margin:14px 0 6px">Day by day</h2><div class="tw"><table id="gl_tab" style="min-width:0"></table></div>
+<div class="note">Kg sold comes from the days you save in Add day, counted from the day after the last delivery. Nothing to type here.</div>
+<h2 style="margin-top:14px">New delivery</h2>
+<div class="row"><div><label>Date (after closing)</label><input type="date" id="gl_d"></div><div><label>Tonnes added</label><input id="gl_s" inputmode="decimal"></div></div>
+<label>Gauge reached (%)</label><input id="gl_a" inputmode="decimal">
+<button class="btn" id="gl_add">Save delivery</button><div class="note" id="gl_msg"></div>
+<div id="gl_list"></div></div>
+<div class="card"><h2>Litres in the tank from a dip reading</h2>
+<label>Tank shape</label>
+<select id="t_shape"><option value="h">Horizontal cylinder (lying down)</option><option value="v">Vertical cylinder (standing)</option><option value="r">Rectangular</option></select>
+<div class="row"><div><label id="l_a">Diameter (cm)</label><input id="t_a" inputmode="decimal"></div><div><label id="l_b">Length (cm)</label><input id="t_b" inputmode="decimal"></div></div>
+<div class="row"><div><label id="l_c" class="hide">Width (cm)</label><input id="t_c" class="hide" inputmode="decimal"></div></div>
+<label>Dip reading: fuel depth (cm)</label><input id="t_h" inputmode="decimal">
+<div class="sum" id="t_out">Enter the measurements.</div>
+<div class="note">Uses the exact geometry formula for a plain tank. Real tanks with dished ends can differ a little, so use your supplier's calibration chart if you have one.</div></div>
+<div class="card"><h2>Book stock check</h2>
+<div class="row"><div><label>Stock at start (L)</label><input id="s_start" inputmode="decimal"></div><div><label>Delivered (L)</label><input id="s_del" inputmode="decimal"></div></div>
+<div class="row"><div><label>Sold per meter (L)</label><input id="s_sold" inputmode="decimal"></div><div><label>Dip now (L)</label><input id="s_dip" inputmode="decimal"></div></div>
+<div class="sum" id="s_out">Enter the litres.</div></div>
+</section>
+
+<script>
+var KEY="station_ledger_v2",D=[];
+var seed=[{date:"2026-11-10",open:1416.60,close:1566.63,price:1400,cash:88900,pos:116775,tr:0,cr:4300,out:0,note:"From notebook"},
+{date:"2026-11-11",open:1566.66,close:1709.92,price:1400,cash:88000,pos:102200,tr:0,cr:0,out:0,note:"From notebook. Notebook shows 700 paid out (f. incl), not entered"}];
+function load(){try{var s=localStorage.getItem(KEY);if(s)D=JSON.parse(s)}catch(e){}if(!D.length)D=[]}
+function store(){try{localStorage.setItem(KEY,JSON.stringify(D))}catch(e){}}
+function $(i){return document.getElementById(i)}
+function N(n){return "₦"+Math.round(n).toLocaleString("en-NG")}
+function L(n){return (Math.round(n*100)/100).toLocaleString("en-NG",{minimumFractionDigits:2})}
+function ev(s){s=String(s||"").replace(/,/g,"").toLowerCase().trim();if(!s)return 0;var t=0,p=s.split("+");for(var i=0;i<p.length;i++){var m=p[i].trim().match(/^(\d*\.?\d+)(k?)$/);if(!m)return NaN;t+=parseFloat(m[1])*(m[2]?1000:1)}return t}
+function calc(e){var l=e.close-e.open,x=l*e.price,c=e.cash+e.pos+e.tr+e.out+(e.bt||0)+(e.bg||0);return{l:l,exp:x,got:c,v:c-x}}
+function sorted(){return D.slice().sort(function(a,b){return a.date<b.date?-1:1})}
+function flags(list,i){var e=list[i],f=[],c=calc(e);
+if(c.l<=0)f.push("Closing is not above opening");
+if(i>0){var g=e.open-list[i-1].close;if(Math.abs(g)>0.005)f.push("Opening differs from last closing by "+L(g)+" kg")}
+if(Math.abs(c.v)>=1)f.push(c.v<0?"Short by "+N(-c.v):"Over by "+N(c.v));
+return f}
+function render(){var s=sorted();if(!s.length){$("dash").innerHTML='<div class="card">No days yet. Tap Add day.</div>';return}
+var tl=0,te=0,tg=0,m={cash:0,pos:0,tr:0};
+s.forEach(function(e){var c=calc(e);tl+=c.l;te+=c.exp;tg+=c.got;m.cash+=e.cash;m.pos+=e.pos;m.tr+=e.tr});
+var v=tg-te,h='<div class="kpis"><div class="kpi"><small>Kg sold</small><b>'+L(tl)+'</b></div><div class="kpi"><small>Expected sales</small><b>'+N(te)+'</b></div><div class="kpi"><small>Money accounted for</small><b>'+N(tg)+'</b></div><div class="kpi"><small>Total difference</small><b class="'+(v<-0.5?"neg":"pos")+'">'+(v<0?"-":"")+N(Math.abs(v))+'</b></div></div>';
+var last=s.slice(-14),mx=Math.max.apply(null,last.map(function(e){return calc(e).l}))||1,w=100/last.length,svg='<svg viewBox="0 0 100 52" width="100%" role="img" aria-label="Kg sold per day">';
+last.forEach(function(e,i){var c=calc(e),bh=Math.max(0,c.l/mx*36);svg+='<rect x="'+(i*w+w*0.15)+'" y="'+(40-bh)+'" width="'+w*0.7+'" height="'+bh+'" rx="1" fill="var(--bar)"/><text x="'+(i*w+w/2)+'" y="45" font-size="3" text-anchor="middle" fill="var(--mute)">'+e.date.slice(8)+'/'+e.date.slice(5,7)+'</text><text x="'+(i*w+w/2)+'" y="'+(38-bh)+'" font-size="3" text-anchor="middle" fill="var(--ink)">'+Math.round(c.l)+'</text>'});
+svg+='</svg>';
+h+='<div class="card"><h2>Kg sold per day</h2>'+svg+'</div>';
+var pt=m.cash+m.pos+m.tr||1,cols={cash:"#12794a",pos:"#2a3f9e",tr:"#b86a00",cr:"#c2261f"},nm={cash:"Cash",pos:"POS",tr:"Transfer",cr:"Outstanding"};
+h+='<div class="card"><h2>How customers paid</h2><div class="mix">';
+for(var k in m)h+='<div style="width:'+(m[k]/pt*100)+'%;background:'+cols[k]+'"></div>';
+h+='</div><div class="leg">';for(var k in m)h+='<span><i style="background:'+cols[k]+'"></i>'+nm[k]+' '+N(m[k])+' ('+Math.round(m[k]/pt*100)+'%)</span>';
+h+='</div></div><div class="card"><h2>Daily records</h2><div class="tw"><table><tr><th>Date</th><th>Kg</th><th>Expected</th><th>Cash</th><th>POS</th><th>Boss</th><th>Diff</th><th></th></tr>';
+s.slice().reverse().forEach(function(e){var i=s.indexOf(e),c=calc(e),f=flags(s,i);
+h+='<tr><td>'+e.date.slice(8)+'/'+e.date.slice(5,7)+(f.length?f.map(function(t){return '<span class="flag">'+t+'</span>'}).join(""):'')+'</td><td>'+L(c.l)+'</td><td>'+N(c.exp)+'</td><td>'+N(e.cash)+'</td><td>'+N(e.pos)+'</td><td>'+N((e.bt||0)+(e.bg||0))+'</td><td class="'+(c.v<-0.5?"neg":"pos")+'">'+(c.v<0?"-":"")+N(Math.abs(c.v))+'</td><td><button class="x" style="color:var(--brand)" data-e="'+e.date+'">Edit</button><button class="x" data-d="'+e.date+'" aria-label="Delete">Delete</button></td></tr>'});
+h+='</table></div><button class="btn alt" id="csv">Copy data as CSV</button><div class="note" id="csvm"></div></div>';
+$("dash").innerHTML=h;
+$("csv").onclick=function(){var r=["date,open,close,kg,price,expected,cash,pos,transfer,expenses,boss_collected,gas_value,gas_kg,difference"];s.forEach(function(e){var c=calc(e);r.push([e.date,e.open,e.close,c.l.toFixed(2),e.price,Math.round(c.exp),e.cash,e.pos,e.tr,e.out,e.bt||0,e.bg||0,e.bk||0,Math.round(c.v)].join(","))});var t=r.join("\n");try{navigator.clipboard.writeText(t).then(function(){$("csvm").textContent="Copied. Paste into Google Sheets or Excel."},function(){$("csvm").textContent="Copy was blocked on this device."})}catch(x){$("csvm").textContent="Copy was blocked on this device."}};
+var ds=document.querySelectorAll("[data-d]");for(var i=0;i<ds.length;i++)ds[i].onclick=function(){var d=this.getAttribute("data-d");if(this.getAttribute("data-s")){D=D.filter(function(e){return e.date!==d});store();render()}else{this.setAttribute("data-s","1");this.textContent="Tap again"}}}
+function vals(){var o={date:$("f_date").value,open:parseFloat($("f_open").value),close:parseFloat($("f_close").value),price:parseFloat($("f_price").value),cash:ev($("f_cash").value),pos:ev($("f_pos").value),tr:ev($("f_tr").value),cr:0,out:sm(IT.ex),bt:sm(IT.bc),bg:sm(IT.gv),bk:IT.gv.reduce(function(t,x){return t+(x.k||0)},0),ex:IT.ex.slice(),bc:IT.bc.slice(),gv:IT.gv.slice(),note:$("f_note").value};return o}
+function prev(){var e=vals(),ok=e.date&&!isNaN(e.open)&&!isNaN(e.close)&&!isNaN(e.price)&&[e.cash,e.pos,e.tr,e.cr,e.out,e.bt,e.bg].every(function(x){return !isNaN(x)});
+if(!ok){$("prev").textContent="Fill the meter readings, price and amounts to see the result.";return null}
+var c=calc(e);var rw=function(a,b,k){return '<div><span>'+a+'</span><b'+(k?' class="'+k+'"':'')+'>'+b+'</b></div>'};$("prev").innerHTML=rw("Kg sold (closing minus opening)",L(c.l)+" kg")+rw("Expected sales ("+L(c.l)+" kg \u00d7 "+N(e.price)+")",N(c.exp))+'<hr>'+rw("Cash",N(e.cash))+rw("POS",N(e.pos))+rw("Transfer",N(e.tr))+rw("Expenses",N(e.out))+rw("Collected by boss",N(e.bt))+rw("Gas given on boss\u2019s order",N(e.bg))+rw("Total accounted for",N(c.got))+'<hr>'+rw("Difference",(c.v<0?"-":"")+N(Math.abs(c.v))+(c.v<-0.5?" short":c.v>0.5?" over":""),c.v<-0.5?"neg":"pos")+gasPrev(e);return e}
+function fillDefaults(){var s=sorted(),l=s[s.length-1];$("f_date").value=new Date().toISOString().slice(0,10);if(l){$("f_open").value=l.close;$("f_price").value=l.price}prev()}
+$("save").onclick=function(){var pd=CAT.filter(function(c){return $("a_"+c[0]).value.trim()});if(pd.length){$("msg").textContent="Tap Add under "+pd[0][1]+" to include the amount you typed.";return}var e=prev();if(!e){$("msg").textContent="Some fields are missing or not valid numbers.";return}
+if(e.close<=e.open){$("msg").textContent="Closing must be higher than opening.";return}
+var oth=D.filter(function(x){return x.date!==EDIT});if(oth.some(function(x){return x.date===e.date})){$("msg").textContent="That date is already saved. Tap Edit on it in the dashboard instead.";return}D=oth;endEdit();
+D.push(e);store();IT={ex:[],bc:[],gv:[]};drawItems();$("msg").textContent="Saved.";["f_close","f_cash","f_pos","f_tr","f_note"].forEach(function(i){$(i).value=""});fillDefaults();render()};
+["f_date","f_open","f_close","f_price","f_cash","f_pos","f_tr"].forEach(function(i){$(i).oninput=prev});
+function tank(){var sh=$("t_shape").value;$("l_c").className=$("t_c").className=sh==="r"?"":"hide";
+$("l_a").textContent=sh==="r"?"Length (cm)":"Diameter (cm)";$("l_b").textContent=sh==="h"?"Length (cm)":sh==="v"?"Height (cm)":"Width (cm)";
+var a=parseFloat($("t_a").value),b=parseFloat($("t_b").value),c=parseFloat($("t_c").value),h=parseFloat($("t_h").value),v,cap,o=$("t_out");
+if(isNaN(a)||isNaN(b)||isNaN(h)||(sh==="r"&&isNaN(c))){o.textContent="Enter the measurements.";return}
+var maxH=sh==="h"?a:sh==="v"?b:c;if(sh==="r")maxH=c;
+if(sh==="h"){var r=a/2;if(h>a||h<0){o.textContent="Dip is taller than the tank.";return}v=b*(r*r*Math.acos((r-h)/r)-(r-h)*Math.sqrt(Math.max(0,2*r*h-h*h)));cap=Math.PI*r*r*b}
+else if(sh==="v"){if(h>b){o.textContent="Dip is taller than the tank.";return}var r2=a/2;v=Math.PI*r2*r2*h;cap=Math.PI*r2*r2*b}
+else{if(h>c){o.textContent="Dip is taller than the tank.";return}v=a*b*h;cap=a*b*c}
+o.innerHTML='<div><span>Fuel in tank</span><b>'+L(v/1000)+' L</b></div><div><span>Tank capacity</span><b>'+L(cap/1000)+' L</b></div><div><span>Full</span><b>'+Math.round(v/cap*100)+'%</b></div>'}
+["t_shape","t_a","t_b","t_c","t_h"].forEach(function(i){$(i).oninput=tank});
+function stock(){var a=parseFloat($("s_start").value),d=parseFloat($("s_del").value||0),s=parseFloat($("s_sold").value),p=parseFloat($("s_dip").value),o=$("s_out");
+if(isNaN(a)||isNaN(s)||isNaN(p)||isNaN(d)){o.textContent="Enter the litres.";return}
+var ex=a+d-s,df=p-ex;o.innerHTML='<div><span>Should be in tank</span><b>'+L(ex)+' L</b></div><div><span>Dip shows</span><b>'+L(p)+' L</b></div><div><span>Difference</span><b class="'+(Math.abs(df)>0.5?(df<0?"neg":"pos"):"pos")+'">'+L(df)+' L</b></div>'}
+["s_start","s_del","s_sold","s_dip"].forEach(function(i){$(i).oninput=stock});
+var IT={ex:[],bc:[],gv:[]},CAT=[["ex","Expenses","What was it for?"],["bc","Collected by boss","Details (optional)"],["gv","Gas given on boss\u2019s order","Who got it?"]];
+function sm(a){return a.reduce(function(t,x){return t+x.a},0)}
+function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
+function ilist(L2,t,items,tot,legacy){if(items&&items.length){L2.push("   "+t+" "+N(tot)+":");items.forEach(function(x,i){L2.push("     "+(i+1)+". "+(x.n||"No details")+(x.k?" ("+L(x.k)+" kg)":"")+": "+N(x.a))})}else if(tot){L2.push("   "+t+": "+N(tot)+(legacy?" ("+legacy+")":""))}}
+function drawItems(){var h="";CAT.forEach(function(c){var k=c[0],a=IT[k];h+='<div class="sum" style="margin-top:14px"><b>'+c[1]+' <span style="float:right">'+N(sm(a))+'</span></b>';
+a.forEach(function(x,i){h+='<div><span>'+esc(x.n||"No details")+(x.k?' ('+L(x.k)+' kg)':'')+'</span><span>'+N(x.a)+' <button class="x" data-k="'+k+'" data-i="'+i+'">Remove</button></span></div>'});
+h+='<input id="n_'+k+'" placeholder="'+c[2]+'" style="margin-top:8px">'+(k==="gv"?'<input id="k_gv" inputmode="decimal" placeholder="Kg" style="margin-top:6px">':'')+'<input id="a_'+k+'" placeholder="Amount, e.g. 2k+500" style="margin-top:6px"><button class="btn alt" data-add="'+k+'" style="margin-top:8px">Add</button></div>'});
+$("items").innerHTML=h;prev()}
+$("items").onclick=function(q){var t=q.target,k=t.getAttribute("data-add"),r=t.getAttribute("data-k");
+if(k){var am=ev($("a_"+k).value);if(isNaN(am)||am<=0){$("msg").textContent="Type a valid amount to add.";return}
+var o={n:$("n_"+k).value.trim(),a:am};if(k==="gv")o.k=parseFloat($("k_gv").value)||0;IT[k].push(o);$("msg").textContent="";drawItems()}
+else if(r){IT[r].splice(+t.getAttribute("data-i"),1);drawItems()}};
+var EDIT="";
+function endEdit(){EDIT="";$("save").textContent="Save day";$("cancel").style.display="none"}
+function editDay(d){var e=D.filter(function(x){return x.date===d})[0];if(!e)return;EDIT=d;
+$("f_date").value=e.date;$("f_open").value=e.open;$("f_close").value=e.close;$("f_price").value=e.price;$("f_cash").value=e.cash;$("f_pos").value=e.pos;$("f_tr").value=e.tr;$("f_note").value=e.note||"";
+IT={ex:(e.ex||(e.out?[{n:e.en||"Expenses",a:e.out}]:[])).slice(),bc:(e.bc||(e.bt?[{n:e.bn||"",a:e.bt}]:[])).slice(),gv:(e.gv||(e.bg||e.bk?[{n:"",a:e.bg||0,k:e.bk||0}]:[])).slice()};
+$("save").textContent="Save changes";$("cancel").style.display="block";
+document.querySelector('nav button[data-t="add"]').click();drawItems();$("msg").textContent="Editing "+fd(d)+". Change what you need, then tap Save changes."}
+$("cancel").onclick=function(){endEdit();["f_close","f_cash","f_pos","f_tr","f_note"].forEach(function(i){$(i).value=""});IT={ex:[],bc:[],gv:[]};drawItems();fillDefaults();$("msg").textContent=""};
+$("dash").onclick=function(q){var d=q.target.getAttribute("data-e");if(d)editDay(d)};
+function waNum(){var d=($("r_num").value||"").replace(/\D/g,"");if(d.charAt(0)==="0")d="234"+d.slice(1);return d}
+$("r_num").oninput=function(){try{localStorage.setItem("station_boss_num",$("r_num").value)}catch(e){}report()};
+try{$("r_num").value=localStorage.getItem("station_boss_num")||""}catch(e){}
+$("bk_copy").onclick=function(){var t="STATIONLEDGER:"+JSON.stringify(D),f=function(){$("bk_in").value=t;$("bk_msg").textContent="Copy was blocked. The backup is in the box below. Press and hold to copy it."};try{navigator.clipboard.writeText(t).then(function(){$("bk_msg").textContent="Backup copied. Paste it somewhere safe."},f)}catch(e){f()}};
+$("bk_res").onclick=function(){var t=$("bk_in").value.replace(/[\u201c\u201d]/g,'"').trim(),i0=t.indexOf("["),i1=t.lastIndexOf("]");if(i0<0||i1<i0){$("bk_msg").textContent="No backup found in the box. Paste the full copied text.";return}t=t.slice(i0,i1+1);
+try{var a=JSON.parse(t);if(!Array.isArray(a))throw 0;if(!RB){RB=true;$("bk_res").textContent="Tap again to replace all records";$("bk_msg").textContent="Found "+a.length+" days in the backup.";return}RB=false;$("bk_res").textContent="Restore from backup";D=a;store();render();quick(3);$("bk_msg").textContent="Restored "+a.length+" days. Check the Dashboard."}catch(e){$("bk_msg").textContent="The backup is cut off or damaged. Copy it again in full."}};var RB=false;
+function gas(){var t=parseFloat($("g_t").value),p1=parseFloat($("g_p").value),p0=parseFloat($("g_p0").value),n=parseFloat($("g_now").value),tg=parseFloat($("g_tg").value),c=$("g_cap"),o=$("g_out");
+try{localStorage.setItem("station_gas_cal2",JSON.stringify([$("g_t").value,$("g_p").value,$("g_p0").value]))}catch(e){}
+if(isNaN(t)||isNaN(p1)||isNaN(p0)||p1<=p0){c.textContent="Enter the tonnes put in and the gauge before and after.";o.textContent="";return}
+var cap=t/((p1-p0)/100),f=function(x){return (Math.round(x*1000)/1000).toLocaleString("en-NG")+" t ("+Math.round(x*1000).toLocaleString("en-NG")+" kg)"};
+c.innerHTML='<div><span>Full tank (100%)</span><b>'+f(cap)+'</b></div><div><span>Each 1% is about</span><b>'+Math.round(cap*10)+' kg</b></div>';
+if(isNaN(n)){o.textContent="Enter the gauge reading.";return}
+if(n<0||n>100){o.textContent="Gauge must be 0 to 100.";return}
+var h='<div><span>Gas in tank now</span><b>'+f(cap*n/100)+'</b></div>';
+if(!isNaN(tg)&&tg>n&&tg<=100)h+='<div><span>To reach '+tg+'%, add</span><b>'+f(cap*(tg-n)/100)+'</b></div>';
+o.innerHTML=h}
+["g_t","g_p","g_p0","g_now","g_tg"].forEach(function(i){$(i).oninput=function(){gas();glDraw()}});
+try{var gc=JSON.parse(localStorage.getItem("station_gas_cal2"));if(gc){$("g_t").value=gc[0];$("g_p").value=gc[1];$("g_p0").value=gc[2]}}catch(e){}
+var GL=[];try{GL=JSON.parse(localStorage.getItem("station_gas_fills"))||[]}catch(e){GL=[]}
+if(!GL.length)GL=[{d:"2026-11-18",t:2.5,p:56}];
+function kgOf(e){var d=e.close-e.open;return d>0?d:0}
+function K(x){return Math.round(x).toLocaleString("en-NG")+" kg"}
+function capKg(){var t=parseFloat($("g_t").value),p1=parseFloat($("g_p").value),p0=parseFloat($("g_p0").value);if(isNaN(t)||isNaN(p1)||isNaN(p0)||p1<=p0)return 0;return t*1000/((p1-p0)/100)}
+function gsave(){try{localStorage.setItem("station_gas_fills",JSON.stringify(GL))}catch(e){}}
+function soldBw(a,b){return D.reduce(function(t,e){return t+((e.date>a&&(!b||e.date<=b))?kgOf(e):0)},0)}
+function glDraw(){var cap=capKg(),s=$("gl_sum");if(!cap){s.textContent="Set the tank size in the calculator above.";$("gl_list").innerHTML="";return}
+GL.sort(function(x,y){return x.d<y.d?-1:x.d>y.d?1:0});var f=GL[GL.length-1],st=cap*f.p/100,sold=soldBw(f.d),rem=st-sold,pc=Math.round(rem/cap*1000)/10;
+s.innerHTML='<div><span>Last delivery ('+fd(f.d)+')</span><b>'+f.t+' t, gauge '+f.p+'%</b></div><div><span>Gas then</span><b>'+K(st)+'</b></div><div><span>Sold since (from Add day)</span><b>'+K(sold)+'</b></div><div><span>Remaining</span><b class="'+(pc<20?'neg':'pos')+'">'+K(rem)+' ('+pc+'%)</b></div>'+(rem<0?'<div><span>Sold is more than the gas recorded. Check the kg entered.</span></div>':pc<20?'<div><span>Low gas. Plan a refill.</span></div>':'');
+var h="";GL.forEach(function(x,i){var c="";if(i>0){var q=GL[i-1],bk=cap*q.p/100-soldBw(q.d,x.d),im=cap*x.p/100-x.t*1000;c='<div class="note" style="margin:2px 0 0">Book before delivery '+K(bk)+', gauge implies '+K(im)+' (difference '+K(im-bk)+')</div>'}
+h+='<div style="padding:7px 0;border-bottom:1px solid var(--rule);font-size:14px"><div style="display:flex;justify-content:space-between;gap:8px"><span>'+fd(x.d)+': '+x.t+' t added, gauge '+x.p+'%</span>'+(i>0?'<button class="x" data-g="'+i+'">Remove</button>':'')+'</div>'+c+'</div>'});$("gl_list").innerHTML=h;glTab(cap)}
+function glTab(cap){var q=[];D.forEach(function(e){if(e.date>GL[0].d)q.push({d:e.date,k:0,s:kgOf(e)})});GL.forEach(function(f,i){if(i>0)q.push({d:f.d,k:1,f:f})});
+q.sort(function(a,b){return a.d<b.d?-1:a.d>b.d?1:a.k-b.k});
+var rem=cap*GL[0].p/100,out=[];
+q.forEach(function(x){var lab=fd(x.d).slice(0,-5),sold;if(x.k){rem=cap*x.f.p/100;lab+=" delivery +"+x.f.t+" t";sold="-"}else{rem-=x.s;sold=Math.round(x.s).toLocaleString("en-NG")}
+var pc=Math.round(rem/cap*1000)/10;out.push('<tr><td>'+lab+'</td><td>'+sold+'</td><td'+(pc<20?' class="neg"':'')+'>'+Math.round(rem).toLocaleString("en-NG")+'</td><td>'+(Math.round(rem)/1000).toFixed(2)+'</td><td>'+pc+'%</td></tr>')});
+$("gl_tab").innerHTML='<tr><th>Date</th><th>Sold kg</th><th>Left kg</th><th>Left t</th><th>Gauge</th></tr>'+(out.length?out.reverse().join(""):'<tr><td colspan="5" style="text-align:left">No days after the delivery yet.</td></tr>')}
+function gasPrev(e){var cap=capKg();if(!cap)return"";var f=null;GL.forEach(function(x){if(x.d<e.date&&(!f||x.d>f.d))f=x});if(!f)return"";
+var sold=D.reduce(function(t,x){return t+((x.date>f.d&&x.date<e.date)?kgOf(x):0)},0)+kgOf(e),rem=cap*f.p/100-sold,pc=Math.round(rem/cap*1000)/10;
+return '<hr><div><span>Gas left after today</span><b class="'+(pc<20?'neg':'pos')+'">'+K(rem)+' ('+pc+'%)</b></div>'}
+function gasLine(date){var cap=capKg();if(!cap)return"";var f=null;GL.forEach(function(x){if(x.d<=date&&(!f||x.d>f.d))f=x});if(!f)return"";
+var rem=cap*f.p/100-soldBw(f.d,date);return "\nGas left in tank: "+K(rem)+" ("+Math.round(rem/cap*1000)/10+"%)"}
+$("gl_d").value=new Date().toISOString().slice(0,10);
+$("gl_add").onclick=function(){var t=parseFloat($("gl_s").value),p=parseFloat($("gl_a").value),d=$("gl_d").value;if(!d||isNaN(t)||isNaN(p)||t<=0||p<=0||p>100){$("gl_msg").textContent="Enter the date, tonnes added and the gauge % reached.";return}
+if(GL.some(function(x){return x.d===d})){$("gl_msg").textContent="A delivery is already saved for that date.";return}
+GL.push({d:d,t:t,p:p});gsave();$("gl_s").value="";$("gl_a").value="";$("gl_msg").textContent="Saved. Gas left now counts from this gauge reading.";glDraw()};
+$("gl_list").onclick=function(q){var i=q.target.getAttribute("data-g");if(i===null)return;if(q.target.getAttribute("data-s")){GL.splice(+i,1);gsave();glDraw()}else{q.target.setAttribute("data-s","1");q.target.textContent="Tap again"}};
+var MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
+function fd(d){return +d.slice(8)+" "+MO[+d.slice(5,7)-1]+" "+d.slice(0,4)}
+function dv(v){return v<-0.5?N(-v)+" short":v>0.5?N(v)+" over":"balanced"}
+function quick(n){var s=sorted();if(!s.length)return;$("r_to").value=s[s.length-1].date;$("r_from").value=n?s[Math.max(0,s.length-n)].date:s[0].date;report()}
+function report(){var s=sorted(),a=$("r_from").value,b=$("r_to").value,o=$("r_out");
+var r=s.filter(function(e){return(!a||e.date>=a)&&(!b||e.date<=b)});
+if(!r.length){o.textContent="No days in this range.";return}
+var miss=[];if(a&&b){for(var dd=new Date(a+"T00:00:00Z"),zz=new Date(b+"T00:00:00Z");dd<=zz;dd.setUTCDate(dd.getUTCDate()+1)){var kk=dd.toISOString().slice(0,10);if(!s.some(function(e){return e.date===kk}))miss.push(fd(kk))}}$("r_msg").textContent=miss.length?"No record saved for: "+miss.join(", ")+". Add it in Add day.":"";
+var t={l:0,e:0,c:0,p:0,tr:0,cr:0,o:0,g:0,bt:0,bg:0,bk:0,gk:0},lines=[],notes=[];
+r.forEach(function(e){var c=calc(e),i=s.indexOf(e);t.l+=c.l;t.e+=c.exp;t.c+=e.cash;t.p+=e.pos;t.tr+=e.tr;t.cr+=e.cr;t.o+=e.out;t.bt+=e.bt||0;t.bg+=e.bg||0;t.bk+=e.bk||0;t.gk+=kgOf(e);t.g+=c.got;
+lines.push(fd(e.date)+": "+L(c.l)+" L, expected "+N(c.exp)+", cash "+N(e.cash)+", POS "+N(e.pos)+", owed "+N(e.cr)+", "+dv(c.v));
+ilist(lines,"Expenses",e.ex,e.out,e.en);ilist(lines,"Collected by boss",e.bc,e.bt,e.bn);ilist(lines,"Gas given on boss’s order",e.gv,e.bg,"");
+flags(s,i).forEach(function(f){if(f.indexOf("Short")!==0&&f.indexOf("Over")!==0)notes.push(fd(e.date)+": "+f)});
+if(e.note&&e.note!=="From notebook")notes.push(fd(e.date)+": "+e.note)});
+var x="RECORD OF SALES FROM "+fd(a||r[0].date).toUpperCase()+" TO "+fd(b||r[r.length-1].date).toUpperCase()+"\n\nKg sold: "+L(t.l)+"\nTotal sales: "+N(t.e)+"\nCash: "+N(t.c)+"\nPOS: "+N(t.p)+"\nTransfer: "+N(t.tr)+"\nExpenses: "+N(t.o)+"\nCollected by boss: "+N(t.bt)+"\nGas given on boss’s order: "+(t.bk?L(t.bk)+" kg, ":"")+N(t.bg)+"\nAccounted for: "+N(t.g)+"\nDifference: "+dv(t.g-t.e)+gasLine(r[r.length-1].date);
+o.textContent=x;$("r_wa").href="https://wa.me/"+waNum()+"?text="+encodeURIComponent(x);return x}
+$("r_copy").onclick=function(){var x=report();if(!x)return;try{navigator.clipboard.writeText(x).then(function(){$("r_msg").textContent="Copied. Paste it into WhatsApp or email."},function(){$("r_msg").textContent="Copy was blocked. Press and hold the message to copy it."})}catch(e){$("r_msg").textContent="Copy was blocked. Press and hold the message to copy it."}};
+var RM=false;["r_from","r_to"].forEach(function(i){$(i).oninput=function(){RM=true;report()}});
+$("r_q3").onclick=function(){RM=true;quick(3)};$("r_q7").onclick=function(){RM=true;quick(7)};$("r_all").onclick=function(){RM=true;quick(0)};
+var tabs=document.querySelectorAll("nav button");for(var i=0;i<tabs.length;i++)tabs[i].onclick=function(){for(var j=0;j<tabs.length;j++){tabs[j].className=tabs[j]===this?"on":"";$(tabs[j].getAttribute("data-t")).className=tabs[j]===this?"":"hide"}if(RM)report();else{quick(3);report()}glDraw()};
+load();render();drawItems();fillDefaults();tank();stock();gas();glDraw();quick(3);
+if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
+</script>
+</body>
+</html>
