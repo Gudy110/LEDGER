@@ -51,8 +51,6 @@ th,td{padding:8px 6px;border-bottom:1px solid var(--rule);text-align:right;white
 <label>Date</label><input type="date" id="f_date">
 <div class="row"><div><label>Opening meter</label><input id="f_open" inputmode="decimal"></div><div><label>Closing meter</label><input id="f_close" inputmode="decimal"></div></div>
 <label>Price per kg (₦)</label><input id="f_price" inputmode="decimal">
-<label>Cash (you can type 65k+13400+9600)</label><input id="f_cash">
-<div class="row"><div><label>POS</label><input id="f_pos"></div><div><label>Transfer</label><input id="f_tr"></div></div>
 
 
 <div id="items"></div>
@@ -150,7 +148,7 @@ h+='</table></div><button class="btn alt" id="csv">Copy data as CSV</button><div
 $("dash").innerHTML=h;
 $("csv").onclick=function(){var r=["date,open,close,kg,price,expected,cash,pos,transfer,expenses,boss_collected,gas_value,gas_kg,difference"];s.forEach(function(e){var c=calc(e);r.push([e.date,e.open,e.close,c.l.toFixed(2),e.price,Math.round(c.exp),e.cash,e.pos,e.tr,e.out,e.bt||0,e.bg||0,e.bk||0,Math.round(c.v)].join(","))});var t=r.join("\n");try{navigator.clipboard.writeText(t).then(function(){$("csvm").textContent="Copied. Paste into Google Sheets or Excel."},function(){$("csvm").textContent="Copy was blocked on this device."})}catch(x){$("csvm").textContent="Copy was blocked on this device."}};
 var ds=document.querySelectorAll("[data-d]");for(var i=0;i<ds.length;i++)ds[i].onclick=function(){var d=this.getAttribute("data-d");if(this.getAttribute("data-s")){D=D.filter(function(e){return e.date!==d});store();render()}else{this.setAttribute("data-s","1");this.textContent="Tap again"}}}
-function vals(){var o={date:$("f_date").value,open:parseFloat($("f_open").value),close:parseFloat($("f_close").value),price:parseFloat($("f_price").value),cash:ev($("f_cash").value),pos:ev($("f_pos").value),tr:ev($("f_tr").value),cr:0,out:sm(IT.ex),bt:sm(IT.bc),bg:sm(IT.gv),bk:IT.gv.reduce(function(t,x){return t+(x.k||0)},0),ex:IT.ex.slice(),bc:IT.bc.slice(),gv:IT.gv.slice(),note:$("f_note").value};return o}
+function vals(){var o={date:$("f_date").value,open:parseFloat($("f_open").value),close:parseFloat($("f_close").value),price:parseFloat($("f_price").value),cash:sm(IT.cs),pos:sm(IT.ps),tr:sm(IT.tf),cr:0,out:sm(IT.ex),bt:sm(IT.bc),bg:sm(IT.gv),bk:IT.gv.reduce(function(t,x){return t+(x.k||0)},0),cs:IT.cs.slice(),ps:IT.ps.slice(),tf:IT.tf.slice(),ex:IT.ex.slice(),bc:IT.bc.slice(),gv:IT.gv.slice(),note:$("f_note").value};return o}
 function prev(){var e=vals(),ok=e.date&&!isNaN(e.open)&&!isNaN(e.close)&&!isNaN(e.price)&&[e.cash,e.pos,e.tr,e.cr,e.out,e.bt,e.bg].every(function(x){return !isNaN(x)});
 if(!ok){$("prev").textContent="Fill the meter readings, price and amounts to see the result.";return null}
 var c=calc(e);var rw=function(a,b,k){return '<div><span>'+a+'</span><b'+(k?' class="'+k+'"':'')+'>'+b+'</b></div>'};$("prev").innerHTML=rw("Kg sold (closing minus opening)",L(c.l)+" kg")+rw("Expected sales ("+L(c.l)+" kg \u00d7 "+N(e.price)+")",N(c.exp))+'<hr>'+rw("Cash",N(e.cash))+rw("POS",N(e.pos))+rw("Transfer",N(e.tr))+rw("Expenses",N(e.out))+rw("Collected by boss",N(e.bt))+rw("Gas given on boss\u2019s order",N(e.bg))+rw("Total accounted for",N(c.got))+'<hr>'+rw("Difference",(c.v<0?"-":"")+N(Math.abs(c.v))+(c.v<-0.5?" short":c.v>0.5?" over":""),c.v<-0.5?"neg":"pos")+gasPrev(e);return e}
@@ -158,8 +156,8 @@ function fillDefaults(){var s=sorted(),l=s[s.length-1];$("f_date").value=new Dat
 $("save").onclick=function(){var pd=CAT.filter(function(c){return $("a_"+c[0]).value.trim()});if(pd.length){$("msg").textContent="Tap Add under "+pd[0][1]+" to include the amount you typed.";return}var e=prev();if(!e){$("msg").textContent="Some fields are missing or not valid numbers.";return}
 if(e.close<=e.open){$("msg").textContent="Closing must be higher than opening.";return}
 var oth=D.filter(function(x){return x.date!==EDIT});if(oth.some(function(x){return x.date===e.date})){$("msg").textContent="That date is already saved. Tap Edit on it in the dashboard instead.";return}D=oth;endEdit();
-D.push(e);store();IT={ex:[],bc:[],gv:[]};drawItems();$("msg").textContent="Saved.";["f_close","f_cash","f_pos","f_tr","f_note"].forEach(function(i){$(i).value=""});fillDefaults();render()};
-["f_date","f_open","f_close","f_price","f_cash","f_pos","f_tr"].forEach(function(i){$(i).oninput=prev});
+D.push(e);store();IT={cs:[],ps:[],tf:[],ex:[],bc:[],gv:[]};drawItems();$("msg").textContent="Saved.";["f_close","f_note"].forEach(function(i){$(i).value=""});fillDefaults();render()};
+["f_date","f_open","f_close","f_price"].forEach(function(i){$(i).oninput=prev});
 function tank(){var sh=$("t_shape").value;$("l_c").className=$("t_c").className=sh==="r"?"":"hide";
 $("l_a").textContent=sh==="r"?"Length (cm)":"Diameter (cm)";$("l_b").textContent=sh==="h"?"Length (cm)":sh==="v"?"Height (cm)":"Width (cm)";
 var a=parseFloat($("t_a").value),b=parseFloat($("t_b").value),c=parseFloat($("t_c").value),h=parseFloat($("t_h").value),v,cap,o=$("t_out");
@@ -174,26 +172,26 @@ function stock(){var a=parseFloat($("s_start").value),d=parseFloat($("s_del").va
 if(isNaN(a)||isNaN(s)||isNaN(p)||isNaN(d)){o.textContent="Enter the litres.";return}
 var ex=a+d-s,df=p-ex;o.innerHTML='<div><span>Should be in tank</span><b>'+L(ex)+' L</b></div><div><span>Dip shows</span><b>'+L(p)+' L</b></div><div><span>Difference</span><b class="'+(Math.abs(df)>0.5?(df<0?"neg":"pos"):"pos")+'">'+L(df)+' L</b></div>'}
 ["s_start","s_del","s_sold","s_dip"].forEach(function(i){$(i).oninput=stock});
-var IT={ex:[],bc:[],gv:[]},CAT=[["ex","Expenses","What was it for?"],["bc","Collected by boss","Details (optional)"],["gv","Gas given on boss\u2019s order","Who got it?"]];
+var IT={cs:[],ps:[],tf:[],ex:[],bc:[],gv:[]},CAT=[["cs","Cash","Note (optional)"],["ps","POS","Note (optional)"],["tf","Transfer","Who sent it? (optional)"],["ex","Expenses","What was it for?"],["bc","Collected by boss","Details (optional)"],["gv","Gas given on boss\u2019s order","Who got it?"]];
 function sm(a){return a.reduce(function(t,x){return t+x.a},0)}
 function esc(s){return String(s).replace(/[&<>"]/g,function(c){return{"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;"}[c]})}
 function ilist(L2,t,items,tot,legacy){if(items&&items.length){L2.push("   "+t+" "+N(tot)+":");items.forEach(function(x,i){L2.push("     "+(i+1)+". "+(x.n||"No details")+(x.k?" ("+L(x.k)+" kg)":"")+": "+N(x.a))})}else if(tot){L2.push("   "+t+": "+N(tot)+(legacy?" ("+legacy+")":""))}}
-function drawItems(){var h="";CAT.forEach(function(c){var k=c[0],a=IT[k];h+='<div class="sum" style="margin-top:14px"><b>'+c[1]+' <span style="float:right">'+N(sm(a))+'</span></b>';
+function drawItems(){var sv={};CAT.forEach(function(c){["n_","a_"].forEach(function(p){var el=$(p+c[0]);if(el)sv[p+c[0]]=el.value})});var kg0=$("k_gv");if(kg0)sv.k_gv=kg0.value;var h="";CAT.forEach(function(c){var k=c[0],a=IT[k];h+='<div class="sum" style="margin-top:14px"><b>'+c[1]+' <span style="float:right">'+N(sm(a))+'</span></b>';
 a.forEach(function(x,i){h+='<div><span>'+esc(x.n||"No details")+(x.k?' ('+L(x.k)+' kg)':'')+'</span><span>'+N(x.a)+' <button class="x" data-k="'+k+'" data-i="'+i+'">Remove</button></span></div>'});
-h+='<input id="n_'+k+'" placeholder="'+c[2]+'" style="margin-top:8px">'+(k==="gv"?'<input id="k_gv" inputmode="decimal" placeholder="Kg" style="margin-top:6px">':'')+'<input id="a_'+k+'" placeholder="Amount, e.g. 2k+500" style="margin-top:6px"><button class="btn alt" data-add="'+k+'" style="margin-top:8px">Add</button></div>'});
-$("items").innerHTML=h;prev()}
+h+='<input id="n_'+k+'" placeholder="'+c[2]+'" style="margin-top:8px">'+(k==="gv"?'<input id="k_gv" inputmode="decimal" placeholder="Kg" style="margin-top:6px">':'')+'<input id="a_'+k+'" inputmode="decimal" placeholder="Amount" style="margin-top:6px"><button class="btn alt" data-add="'+k+'" style="margin-top:8px">Add</button></div>'});
+$("items").innerHTML=h;for(var id in sv){var el2=$(id);if(el2)el2.value=sv[id]}prev()}
 $("items").onclick=function(q){var t=q.target,k=t.getAttribute("data-add"),r=t.getAttribute("data-k");
 if(k){var am=ev($("a_"+k).value);if(isNaN(am)||am<=0){$("msg").textContent="Type a valid amount to add.";return}
-var o={n:$("n_"+k).value.trim(),a:am};if(k==="gv")o.k=parseFloat($("k_gv").value)||0;IT[k].push(o);$("msg").textContent="";drawItems()}
+var o={n:$("n_"+k).value.trim(),a:am};if(k==="gv")o.k=parseFloat($("k_gv").value)||0;IT[k].push(o);$("msg").textContent="";$("a_"+k).value="";$("n_"+k).value="";if(k==="gv")$("k_gv").value="";drawItems();$("a_"+k).focus()}
 else if(r){IT[r].splice(+t.getAttribute("data-i"),1);drawItems()}};
 var EDIT="";
 function endEdit(){EDIT="";$("save").textContent="Save day";$("cancel").style.display="none"}
 function editDay(d){var e=D.filter(function(x){return x.date===d})[0];if(!e)return;EDIT=d;
-$("f_date").value=e.date;$("f_open").value=e.open;$("f_close").value=e.close;$("f_price").value=e.price;$("f_cash").value=e.cash;$("f_pos").value=e.pos;$("f_tr").value=e.tr;$("f_note").value=e.note||"";
-IT={ex:(e.ex||(e.out?[{n:e.en||"Expenses",a:e.out}]:[])).slice(),bc:(e.bc||(e.bt?[{n:e.bn||"",a:e.bt}]:[])).slice(),gv:(e.gv||(e.bg||e.bk?[{n:"",a:e.bg||0,k:e.bk||0}]:[])).slice()};
+$("f_date").value=e.date;$("f_open").value=e.open;$("f_close").value=e.close;$("f_price").value=e.price;$("f_note").value=e.note||"";
+IT={cs:(e.cs||(e.cash?[{n:"",a:e.cash}]:[])).slice(),ps:(e.ps||(e.pos?[{n:"",a:e.pos}]:[])).slice(),tf:(e.tf||(e.tr?[{n:"",a:e.tr}]:[])).slice(),ex:(e.ex||(e.out?[{n:e.en||"Expenses",a:e.out}]:[])).slice(),bc:(e.bc||(e.bt?[{n:e.bn||"",a:e.bt}]:[])).slice(),gv:(e.gv||(e.bg||e.bk?[{n:"",a:e.bg||0,k:e.bk||0}]:[])).slice()};
 $("save").textContent="Save changes";$("cancel").style.display="block";
 document.querySelector('nav button[data-t="add"]').click();drawItems();$("msg").textContent="Editing "+fd(d)+". Change what you need, then tap Save changes."}
-$("cancel").onclick=function(){endEdit();["f_close","f_cash","f_pos","f_tr","f_note"].forEach(function(i){$(i).value=""});IT={ex:[],bc:[],gv:[]};drawItems();fillDefaults();$("msg").textContent=""};
+$("cancel").onclick=function(){endEdit();["f_close","f_note"].forEach(function(i){$(i).value=""});IT={cs:[],ps:[],tf:[],ex:[],bc:[],gv:[]};drawItems();fillDefaults();$("msg").textContent=""};
 $("dash").onclick=function(q){var d=q.target.getAttribute("data-e");if(d)editDay(d)};
 function waNum(){var d=($("r_num").value||"").replace(/\D/g,"");if(d.charAt(0)==="0")d="234"+d.slice(1);return d}
 $("r_num").oninput=function(){try{localStorage.setItem("station_boss_num",$("r_num").value)}catch(e){}report()};
