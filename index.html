@@ -85,21 +85,20 @@ th,td{padding:8px 6px;border-bottom:1px solid var(--rule);text-align:right;white
 <button class="btn alt" id="bk_res">Restore from backup</button><div class="note" id="bk_msg"></div></div></section>
 
 <section id="tank" class="hide">
-<div class="card"><h2>Gas tank in tonnes</h2>
-<div class="row"><div><label>Tonnes put in</label><input id="g_t" inputmode="decimal" value="2.5"></div><div><label>Gauge before (%)</label><input id="g_p0" inputmode="decimal" value="20"></div></div>
-<label>Gauge after filling (%)</label><input id="g_p" inputmode="decimal" value="56">
+<div class="card"><h2>Gas tank</h2>
+<div class="row"><div><label>Tank volume (litres)</label><input id="g_v" inputmode="decimal" value="10500"></div><div><label>Gas density (kg per litre)</label><input id="g_d" inputmode="decimal" value="0.54"></div></div>
+<label>Maximum fill (%)</label><input id="g_m" inputmode="decimal" value="85">
 <div class="sum" id="g_cap"></div>
-<div class="row"><div><label>Gauge reading now (%)</label><input id="g_now" inputmode="decimal"></div><div><label>Fill up to (%)</label><input id="g_tg" inputmode="decimal" value="80"></div></div>
+<div class="row"><div><label>Gauge reading now (%)</label><input id="g_now" inputmode="decimal"></div><div><label>Fill up to (%)</label><input id="g_tg" inputmode="decimal" value="85"></div></div>
 <div class="sum" id="g_out">Enter the gauge reading.</div>
-<div class="note">The first three boxes set the tank size from one fill, so they are saved. These are set from your 2.5 tonnes fill (20% to 56%). Check the tonnes against the delivery ticket when you can. This assumes the gauge reads evenly by volume.</div></div>
+<div class="note">Volume and maximum fill are from the tank plate. The density of 0.54 kg per litre is a typical LPG figure, not measured, so change it if your supplier gives another. This assumes the gauge reads evenly by volume.</div></div>
 <div class="card"><h2>Gas left in the tank</h2>
 <div class="sum" id="gl_sum"></div>
 <h2 style="margin:14px 0 6px">Day by day</h2><div class="tw"><table id="gl_tab" style="min-width:0"></table></div>
-<div class="note">Kg sold comes from the days you save in Add day, counted from the day after the last delivery. Nothing to type here.</div>
-<h2 style="margin-top:14px">New delivery</h2>
-<div class="row"><div><label>Date (after closing)</label><input type="date" id="gl_d"></div><div><label>Tonnes added</label><input id="gl_s" inputmode="decimal"></div></div>
-<label>Gauge reached (%)</label><input id="gl_a" inputmode="decimal">
-<button class="btn" id="gl_add">Save delivery</button><div class="note" id="gl_msg"></div>
+<div class="note">Kg sold comes from the days you save in Add day. After a refill, enter only the gauge % reached. The app works out the gas added from the kg it expected to be left.</div>
+<h2 style="margin-top:14px">New refill</h2>
+<div class="row"><div><label>Date (after closing)</label><input type="date" id="gl_d"></div><div><label>Gauge after refill (%)</label><input id="gl_a" inputmode="decimal"></div></div>
+<button class="btn" id="gl_add">Save refill</button><div class="note" id="gl_msg"></div>
 <div id="gl_list"></div></div>
 <div class="card"><h2>Litres in the tank from a dip reading</h2>
 <label>Tank shape</label>
@@ -202,34 +201,36 @@ try{$("r_num").value=localStorage.getItem("station_boss_num")||""}catch(e){}
 $("bk_copy").onclick=function(){var t="STATIONLEDGER:"+JSON.stringify(D),f=function(){$("bk_in").value=t;$("bk_msg").textContent="Copy was blocked. The backup is in the box below. Press and hold to copy it."};try{navigator.clipboard.writeText(t).then(function(){$("bk_msg").textContent="Backup copied. Paste it somewhere safe."},f)}catch(e){f()}};
 $("bk_res").onclick=function(){var t=$("bk_in").value.replace(/[\u201c\u201d]/g,'"').trim(),i0=t.indexOf("["),i1=t.lastIndexOf("]");if(i0<0||i1<i0){$("bk_msg").textContent="No backup found in the box. Paste the full copied text.";return}t=t.slice(i0,i1+1);
 try{var a=JSON.parse(t);if(!Array.isArray(a))throw 0;if(!RB){RB=true;$("bk_res").textContent="Tap again to replace all records";$("bk_msg").textContent="Found "+a.length+" days in the backup.";return}RB=false;$("bk_res").textContent="Restore from backup";D=a;store();render();quick(3);$("bk_msg").textContent="Restored "+a.length+" days. Check the Dashboard."}catch(e){$("bk_msg").textContent="The backup is cut off or damaged. Copy it again in full."}};var RB=false;
-function gas(){var t=parseFloat($("g_t").value),p1=parseFloat($("g_p").value),p0=parseFloat($("g_p0").value),n=parseFloat($("g_now").value),tg=parseFloat($("g_tg").value),c=$("g_cap"),o=$("g_out");
-try{localStorage.setItem("station_gas_cal2",JSON.stringify([$("g_t").value,$("g_p").value,$("g_p0").value]))}catch(e){}
-if(isNaN(t)||isNaN(p1)||isNaN(p0)||p1<=p0){c.textContent="Enter the tonnes put in and the gauge before and after.";o.textContent="";return}
-var cap=t/((p1-p0)/100),f=function(x){return (Math.round(x*1000)/1000).toLocaleString("en-NG")+" t ("+Math.round(x*1000).toLocaleString("en-NG")+" kg)"};
-c.innerHTML='<div><span>Full tank (100%)</span><b>'+f(cap)+'</b></div><div><span>Each 1% is about</span><b>'+Math.round(cap*10)+' kg</b></div>';
+function gas(){var v=parseFloat($("g_v").value),d=parseFloat($("g_d").value),mx=parseFloat($("g_m").value),n=parseFloat($("g_now").value),tg=parseFloat($("g_tg").value),c=$("g_cap"),o=$("g_out");
+try{localStorage.setItem("station_gas_tank",JSON.stringify([$("g_v").value,$("g_d").value,$("g_m").value]))}catch(e){}
+if(isNaN(v)||isNaN(d)||v<=0||d<=0){c.textContent="Enter the tank volume and gas density.";o.textContent="";return}
+var cap=v*d,f=function(x){return Math.round(x).toLocaleString("en-NG")+" kg ("+(Math.round(x)/1000).toFixed(2)+" t)"};
+c.innerHTML='<div><span>Full tank (100%)</span><b>'+f(cap)+'</b></div><div><span>Each 1% is about</span><b>'+Math.round(cap/100)+' kg</b></div>'+(mx?'<div><span>At maximum fill ('+mx+'%)</span><b>'+f(cap*mx/100)+'</b></div>':'');
 if(isNaN(n)){o.textContent="Enter the gauge reading.";return}
 if(n<0||n>100){o.textContent="Gauge must be 0 to 100.";return}
 var h='<div><span>Gas in tank now</span><b>'+f(cap*n/100)+'</b></div>';
 if(!isNaN(tg)&&tg>n&&tg<=100)h+='<div><span>To reach '+tg+'%, add</span><b>'+f(cap*(tg-n)/100)+'</b></div>';
+if(mx&&n>mx)h+='<div><span>Above the maximum fill on the plate.</span></div>';
 o.innerHTML=h}
-["g_t","g_p","g_p0","g_now","g_tg"].forEach(function(i){$(i).oninput=function(){gas();glDraw()}});
-try{var gc=JSON.parse(localStorage.getItem("station_gas_cal2"));if(gc){$("g_t").value=gc[0];$("g_p").value=gc[1];$("g_p0").value=gc[2]}}catch(e){}
+["g_v","g_d","g_m","g_now","g_tg"].forEach(function(i){$(i).oninput=function(){gas();glDraw()}});
+try{var gc=JSON.parse(localStorage.getItem("station_gas_tank"));if(gc){$("g_v").value=gc[0];$("g_d").value=gc[1];$("g_m").value=gc[2]}}catch(e){}
 var GL=[];try{GL=JSON.parse(localStorage.getItem("station_gas_fills"))||[]}catch(e){GL=[]}
-if(!GL.length)GL=[{d:"2026-11-18",t:2.5,p:56}];
+if(!GL.length)GL=[{d:"2026-11-18",p:56}];
 function kgOf(e){var d=e.close-e.open;return d>0?d:0}
 function K(x){return Math.round(x).toLocaleString("en-NG")+" kg"}
-function capKg(){var t=parseFloat($("g_t").value),p1=parseFloat($("g_p").value),p0=parseFloat($("g_p0").value);if(isNaN(t)||isNaN(p1)||isNaN(p0)||p1<=p0)return 0;return t*1000/((p1-p0)/100)}
+function capKg(){var v=parseFloat($("g_v").value),d=parseFloat($("g_d").value);return(isNaN(v)||isNaN(d)||v<=0||d<=0)?0:v*d}
 function gsave(){try{localStorage.setItem("station_gas_fills",JSON.stringify(GL))}catch(e){}}
 function soldBw(a,b){return D.reduce(function(t,e){return t+((e.date>a&&(!b||e.date<=b))?kgOf(e):0)},0)}
+function addedAt(i,cap){var q=GL[i-1];return cap*GL[i].p/100-(cap*q.p/100-soldBw(q.d,GL[i].d))}
 function glDraw(){var cap=capKg(),s=$("gl_sum");if(!cap){s.textContent="Set the tank size in the calculator above.";$("gl_list").innerHTML="";return}
-GL.sort(function(x,y){return x.d<y.d?-1:x.d>y.d?1:0});var f=GL[GL.length-1],st=cap*f.p/100,sold=soldBw(f.d),rem=st-sold,pc=Math.round(rem/cap*1000)/10;
-s.innerHTML='<div><span>Last delivery ('+fd(f.d)+')</span><b>'+f.t+' t, gauge '+f.p+'%</b></div><div><span>Gas then</span><b>'+K(st)+'</b></div><div><span>Sold since (from Add day)</span><b>'+K(sold)+'</b></div><div><span>Remaining</span><b class="'+(pc<20?'neg':'pos')+'">'+K(rem)+' ('+pc+'%)</b></div>'+(rem<0?'<div><span>Sold is more than the gas recorded. Check the kg entered.</span></div>':pc<20?'<div><span>Low gas. Plan a refill.</span></div>':'');
-var h="";GL.forEach(function(x,i){var c="";if(i>0){var q=GL[i-1],bk=cap*q.p/100-soldBw(q.d,x.d),im=cap*x.p/100-x.t*1000;c='<div class="note" style="margin:2px 0 0">Book before delivery '+K(bk)+', gauge implies '+K(im)+' (difference '+K(im-bk)+')</div>'}
-h+='<div style="padding:7px 0;border-bottom:1px solid var(--rule);font-size:14px"><div style="display:flex;justify-content:space-between;gap:8px"><span>'+fd(x.d)+': '+x.t+' t added, gauge '+x.p+'%</span>'+(i>0?'<button class="x" data-g="'+i+'">Remove</button>':'')+'</div>'+c+'</div>'});$("gl_list").innerHTML=h;glTab(cap)}
+GL.sort(function(x,y){return x.d<y.d?-1:x.d>y.d?1:0});var n=GL.length,f=GL[n-1],st=cap*f.p/100,sold=soldBw(f.d),rem=st-sold,pc=Math.round(rem/cap*1000)/10;
+s.innerHTML='<div><span>Last refill ('+fd(f.d)+')</span><b>gauge '+f.p+'%</b></div>'+(n>1?'<div><span>Gas added then</span><b>'+K(addedAt(n-1,cap))+'</b></div>':'')+'<div><span>Gas after refill</span><b>'+K(st)+'</b></div><div><span>Sold since (from Add day)</span><b>'+K(sold)+'</b></div><div><span>Remaining</span><b class="'+(pc<20?'neg':'pos')+'">'+K(rem)+' ('+pc+'%)</b></div>'+(rem<0?'<div><span>Sold is more than the gas recorded. Check the kg entered.</span></div>':pc<20?'<div><span>Low gas. Plan a refill.</span></div>':'');
+var h="";GL.forEach(function(x,i){var c="",ln;if(i==0){ln=fd(x.d)+': start, gauge '+x.p+'% ('+K(cap*x.p/100)+')'}else{var q=GL[i-1],bk=cap*q.p/100-soldBw(q.d,x.d),ad=addedAt(i,cap);ln=fd(x.d)+': gauge '+x.p+'%, gas added '+K(ad)+' ('+(Math.round(ad)/1000).toFixed(2)+' t)';c='<div class="note" style="margin:2px 0 0">Expected before refill '+K(bk)+', after refill '+K(cap*x.p/100)+(ad<0?'. Gauge is lower than expected, check the kg sold or the gauge.':'')+'</div>'}
+h+='<div style="padding:7px 0;border-bottom:1px solid var(--rule);font-size:14px"><div style="display:flex;justify-content:space-between;gap:8px"><span>'+ln+'</span>'+(i>0?'<button class="x" data-g="'+i+'">Remove</button>':'')+'</div>'+c+'</div>'});$("gl_list").innerHTML=h;glTab(cap)}
 function glTab(cap){var q=[];D.forEach(function(e){if(e.date>GL[0].d)q.push({d:e.date,k:0,s:kgOf(e)})});GL.forEach(function(f,i){if(i>0)q.push({d:f.d,k:1,f:f})});
 q.sort(function(a,b){return a.d<b.d?-1:a.d>b.d?1:a.k-b.k});
 var rem=cap*GL[0].p/100,out=[];
-q.forEach(function(x){var lab=fd(x.d).slice(0,-5),sold;if(x.k){rem=cap*x.f.p/100;lab+=" delivery +"+x.f.t+" t";sold="-"}else{rem-=x.s;sold=Math.round(x.s).toLocaleString("en-NG")}
+q.forEach(function(x){var lab=fd(x.d).slice(0,-5),sold;if(x.k){lab+=" refill +"+Math.round(cap*x.f.p/100-rem).toLocaleString("en-NG")+" kg";rem=cap*x.f.p/100;sold="-"}else{rem-=x.s;sold=Math.round(x.s).toLocaleString("en-NG")}
 var pc=Math.round(rem/cap*1000)/10;out.push('<tr><td>'+lab+'</td><td>'+sold+'</td><td'+(pc<20?' class="neg"':'')+'>'+Math.round(rem).toLocaleString("en-NG")+'</td><td>'+(Math.round(rem)/1000).toFixed(2)+'</td><td>'+pc+'%</td></tr>')});
 $("gl_tab").innerHTML='<tr><th>Date</th><th>Sold kg</th><th>Left kg</th><th>Left t</th><th>Gauge</th></tr>'+(out.length?out.reverse().join(""):'<tr><td colspan="5" style="text-align:left">No days after the delivery yet.</td></tr>')}
 function gasPrev(e){var cap=capKg();if(!cap)return"";var f=null;GL.forEach(function(x){if(x.d<e.date&&(!f||x.d>f.d))f=x});if(!f)return"";
@@ -238,9 +239,10 @@ return '<hr><div><span>Gas left after today</span><b class="'+(pc<20?'neg':'pos'
 function gasLine(date){var cap=capKg();if(!cap)return"";var f=null;GL.forEach(function(x){if(x.d<=date&&(!f||x.d>f.d))f=x});if(!f)return"";
 var rem=cap*f.p/100-soldBw(f.d,date);return "\nGas left in tank: "+K(rem)+" ("+Math.round(rem/cap*1000)/10+"%)"}
 $("gl_d").value=new Date().toISOString().slice(0,10);
-$("gl_add").onclick=function(){var t=parseFloat($("gl_s").value),p=parseFloat($("gl_a").value),d=$("gl_d").value;if(!d||isNaN(t)||isNaN(p)||t<=0||p<=0||p>100){$("gl_msg").textContent="Enter the date, tonnes added and the gauge % reached.";return}
-if(GL.some(function(x){return x.d===d})){$("gl_msg").textContent="A delivery is already saved for that date.";return}
-GL.push({d:d,t:t,p:p});gsave();$("gl_s").value="";$("gl_a").value="";$("gl_msg").textContent="Saved. Gas left now counts from this gauge reading.";glDraw()};
+$("gl_add").onclick=function(){var p=parseFloat($("gl_a").value),d=$("gl_d").value,cp=capKg();if(!d||isNaN(p)||p<=0||p>100){$("gl_msg").textContent="Enter the date and the gauge % reached.";return}
+if(GL.some(function(x){return x.d===d})){$("gl_msg").textContent="A refill is already saved for that date.";return}
+GL.push({d:d,p:p});GL.sort(function(x,y){return x.d<y.d?-1:x.d>y.d?1:0});gsave();$("gl_a").value="";glDraw();var i=GL.findIndex(function(x){return x.d===d});$("gl_msg").textContent=(i>0&&cp)?"Saved. Gas added: "+K(addedAt(i,cp))+".":"Saved as the starting point."};
+function addLine(a,b){var cap=capKg();if(!cap)return"";GL.sort(function(x,y){return x.d<y.d?-1:x.d>y.d?1:0});var t=0,k=0;GL.forEach(function(x,i){if(i>0&&x.d>=a&&x.d<=b){t+=addedAt(i,cap);k++}});return k?"\nGas added (refill): "+K(t):""}
 $("gl_list").onclick=function(q){var i=q.target.getAttribute("data-g");if(i===null)return;if(q.target.getAttribute("data-s")){GL.splice(+i,1);gsave();glDraw()}else{q.target.setAttribute("data-s","1");q.target.textContent="Tap again"}};
 var MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function fd(d){return +d.slice(8)+" "+MO[+d.slice(5,7)-1]+" "+d.slice(0,4)}
@@ -256,7 +258,7 @@ lines.push(fd(e.date)+": "+L(c.l)+" L, expected "+N(c.exp)+", cash "+N(e.cash)+"
 ilist(lines,"Expenses",e.ex,e.out,e.en);ilist(lines,"Collected by boss",e.bc,e.bt,e.bn);ilist(lines,"Gas given on boss’s order",e.gv,e.bg,"");
 flags(s,i).forEach(function(f){if(f.indexOf("Short")!==0&&f.indexOf("Over")!==0)notes.push(fd(e.date)+": "+f)});
 if(e.note&&e.note!=="From notebook")notes.push(fd(e.date)+": "+e.note)});
-var x="RECORD OF SALES FROM "+fd(a||r[0].date).toUpperCase()+" TO "+fd(b||r[r.length-1].date).toUpperCase()+"\n\nKg sold: "+L(t.l)+"\nTotal sales: "+N(t.e)+"\nCash: "+N(t.c)+"\nPOS: "+N(t.p)+"\nTransfer: "+N(t.tr)+"\nExpenses: "+N(t.o)+"\nCollected by boss: "+N(t.bt)+"\nGas given on boss’s order: "+(t.bk?L(t.bk)+" kg, ":"")+N(t.bg)+"\nAccounted for: "+N(t.g)+"\nDifference: "+dv(t.g-t.e)+gasLine(r[r.length-1].date);
+var x="RECORD OF SALES FROM "+fd(a||r[0].date).toUpperCase()+" TO "+fd(b||r[r.length-1].date).toUpperCase()+"\n\nKg sold: "+L(t.l)+"\nTotal sales: "+N(t.e)+"\nCash: "+N(t.c)+"\nPOS: "+N(t.p)+"\nTransfer: "+N(t.tr)+"\nExpenses: "+N(t.o)+"\nCollected by boss: "+N(t.bt)+"\nGas given on boss’s order: "+(t.bk?L(t.bk)+" kg, ":"")+N(t.bg)+"\nAccounted for: "+N(t.g)+"\nDifference: "+dv(t.g-t.e)+addLine(a||r[0].date,b||r[r.length-1].date)+gasLine(r[r.length-1].date);
 o.textContent=x;$("r_wa").href="https://wa.me/"+waNum()+"?text="+encodeURIComponent(x);return x}
 $("r_copy").onclick=function(){var x=report();if(!x)return;try{navigator.clipboard.writeText(x).then(function(){$("r_msg").textContent="Copied. Paste it into WhatsApp or email."},function(){$("r_msg").textContent="Copy was blocked. Press and hold the message to copy it."})}catch(e){$("r_msg").textContent="Copy was blocked. Press and hold the message to copy it."}};
 var RM=false;["r_from","r_to"].forEach(function(i){$(i).oninput=function(){RM=true;report()}});
