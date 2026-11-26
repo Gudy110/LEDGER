@@ -37,12 +37,12 @@ th,td{padding:8px 6px;border-bottom:1px solid var(--rule);text-align:right;white
 .x{background:none;border:0;color:var(--bad);font:inherit;padding:2px 6px}
 .mix{display:flex;height:16px;border-radius:8px;overflow:hidden;margin:8px 0}.leg{display:flex;flex-wrap:wrap;gap:4px 14px;font-size:13px;color:var(--mute)}
 .leg i{display:inline-block;width:10px;height:10px;border-radius:3px;margin-right:5px}
-.hide{display:none}#tank>.card:nth-child(n+3){display:none}.rep{user-select:all;-webkit-user-select:all;white-space:pre-wrap;background:var(--bg);border:1px solid var(--rule);border-radius:9px;padding:12px;font-size:14px}.note{color:var(--mute);font-size:13px;margin-top:8px}
+nav{flex-wrap:wrap}nav button{font-size:13px;padding:11px 2px}.hide{display:none}#tank>.card:nth-child(n+3){display:none}.rep{user-select:all;-webkit-user-select:all;white-space:pre-wrap;background:var(--bg);border:1px solid var(--rule);border-radius:9px;padding:12px;font-size:14px}.note{color:var(--mute);font-size:13px;margin-top:8px}
 </style>
 </head>
 <body>
 <h1>Station Ledger</h1>
-<nav><button data-t="dash" class="on">Dashboard</button><button data-t="add">Add day</button><button data-t="rep">Report</button><button data-t="tank">Tank</button><button data-t="bk">Backup</button></nav>
+<nav><button data-t="dash" class="on">Dashboard</button><button data-t="add">Add day</button><button data-t="rep">Report</button><button data-t="tank">Tank</button><button data-t="db">Debtors</button><button data-t="bk">Backup</button></nav>
 
 <section id="dash"></section>
 
@@ -74,6 +74,22 @@ th,td{padding:8px 6px;border-bottom:1px solid var(--rule);text-align:right;white
 <button class="btn" id="r_copy">Copy report</button>
 <a class="btn alt" id="r_wa" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none">Send on WhatsApp</a>
 <div class="note" id="r_msg"></div></div>
+</section>
+
+<section id="db" class="hide">
+<div class="card"><h2>Debtors</h2><div class="sum" id="db_sum"></div>
+<div class="note">Credit given counts as money accounted for on the day it was given. Payments later are kept here and shown in the report, not in that day's sales.</div></div>
+<div class="card"><h2>New debtor</h2>
+<div class="row"><div><label>Date</label><input type="date" id="db_d"></div><div><label>Amount owed</label><input id="db_a" inputmode="decimal"></div></div>
+<label>Name</label><input id="db_n" placeholder="Who owes?">
+<label>Note (optional)</label><input id="db_t" placeholder="e.g. 12 kg on credit">
+<button class="btn" id="db_add">Save debtor</button><div class="note" id="db_msg"></div></div>
+<div class="card"><h2>Record a payment</h2>
+<label>Who paid?</label><select id="p_who"></select>
+<div class="row"><div><label>Date</label><input type="date" id="p_d"></div><div><label>Amount paid</label><input id="p_a" inputmode="decimal"></div></div>
+<label>Paid by</label><select id="p_m"><option value="Cash">Cash</option><option value="Transfer">Transfer</option></select>
+<button class="btn" id="p_add">Save payment</button><div class="note" id="p_msg"></div></div>
+<div class="card"><h2>Who owes</h2><div id="db_list"></div></div>
 </section>
 
 <section id="bk" class="hide"><div class="card"><h2>Backup and restore</h2>
@@ -122,7 +138,7 @@ function $(i){return document.getElementById(i)}
 function N(n){return "₦"+Math.round(n).toLocaleString("en-NG")}
 function L(n){return (Math.round(n*100)/100).toLocaleString("en-NG",{minimumFractionDigits:2})}
 function ev(s){s=String(s||"").replace(/,/g,"").toLowerCase().trim();if(!s)return 0;var t=0,p=s.split("+");for(var i=0;i<p.length;i++){var m=p[i].trim().match(/^(\d*\.?\d+)(k?)$/);if(!m)return NaN;t+=parseFloat(m[1])*(m[2]?1000:1)}return t}
-function calc(e){var l=e.close-e.open,x=l*e.price,c=e.cash+e.pos+e.tr+e.out+(e.bt||0)+(e.bg||0);return{l:l,exp:x,got:c,v:c-x}}
+function calc(e){var l=e.close-e.open,x=l*e.price,c=e.cash+e.pos+e.tr+e.out+(e.bt||0)+(e.bg||0)+crOn(e.date);return{l:l,exp:x,got:c,v:c-x}}
 function sorted(){return D.slice().sort(function(a,b){return a.date<b.date?-1:1})}
 function flags(list,i){var e=list[i],f=[],c=calc(e);
 if(c.l<=0)f.push("Closing is not above opening");
@@ -151,7 +167,7 @@ var ds=document.querySelectorAll("[data-d]");for(var i=0;i<ds.length;i++)ds[i].o
 function vals(){var o={date:$("f_date").value,open:parseFloat($("f_open").value),close:parseFloat($("f_close").value),price:parseFloat($("f_price").value),cash:sm(IT.cs),pos:sm(IT.ps),tr:sm(IT.tf),cr:0,out:sm(IT.ex),bt:sm(IT.bc),bg:sm(IT.gv),bk:IT.gv.reduce(function(t,x){return t+(x.k||0)},0),cs:IT.cs.slice(),ps:IT.ps.slice(),tf:IT.tf.slice(),ex:IT.ex.slice(),bc:IT.bc.slice(),gv:IT.gv.slice(),note:$("f_note").value};return o}
 function prev(){var e=vals(),ok=e.date&&!isNaN(e.open)&&!isNaN(e.close)&&!isNaN(e.price)&&[e.cash,e.pos,e.tr,e.cr,e.out,e.bt,e.bg].every(function(x){return !isNaN(x)});
 if(!ok){$("prev").textContent="Fill the meter readings, price and amounts to see the result.";return null}
-var c=calc(e);var rw=function(a,b,k){return '<div><span>'+a+'</span><b'+(k?' class="'+k+'"':'')+'>'+b+'</b></div>'};$("prev").innerHTML=rw("Kg sold (closing minus opening)",L(c.l)+" kg")+rw("Expected sales ("+L(c.l)+" kg \u00d7 "+N(e.price)+")",N(c.exp))+'<hr>'+rw("Cash",N(e.cash))+rw("POS",N(e.pos))+rw("Transfer",N(e.tr))+rw("Expenses",N(e.out))+rw("Collected by boss",N(e.bt))+rw("Gas given on boss\u2019s order",N(e.bg))+rw("Total accounted for",N(c.got))+'<hr>'+rw("Difference",(c.v<0?"-":"")+N(Math.abs(c.v))+(c.v<-0.5?" short":c.v>0.5?" over":""),c.v<-0.5?"neg":"pos")+gasPrev(e);return e}
+var c=calc(e);var rw=function(a,b,k){return '<div><span>'+a+'</span><b'+(k?' class="'+k+'"':'')+'>'+b+'</b></div>'};$("prev").innerHTML=rw("Kg sold (closing minus opening)",L(c.l)+" kg")+rw("Expected sales ("+L(c.l)+" kg \u00d7 "+N(e.price)+")",N(c.exp))+'<hr>'+rw("Cash",N(e.cash))+rw("POS",N(e.pos))+rw("Transfer",N(e.tr))+rw("Expenses",N(e.out))+rw("Collected by boss",N(e.bt))+rw("Gas given on boss\u2019s order",N(e.bg))+rw("Credit given (debtors)",N(crOn(e.date)))+rw("Total accounted for",N(c.got))+'<hr>'+rw("Difference",(c.v<0?"-":"")+N(Math.abs(c.v))+(c.v<-0.5?" short":c.v>0.5?" over":""),c.v<-0.5?"neg":"pos")+gasPrev(e);return e}
 function fillDefaults(){var s=sorted(),l=s[s.length-1];$("f_date").value=new Date().toISOString().slice(0,10);if(l){$("f_open").value=l.close;$("f_price").value=l.price}prev()}
 $("save").onclick=function(){var pd=CAT.filter(function(c){return $("a_"+c[0]).value.trim()});if(pd.length){$("msg").textContent="Tap Add under "+pd[0][1]+" to include the amount you typed.";return}var e=prev();if(!e){$("msg").textContent="Some fields are missing or not valid numbers.";return}
 if(e.close<=e.open){$("msg").textContent="Closing must be higher than opening.";return}
@@ -196,9 +212,9 @@ $("dash").onclick=function(q){var d=q.target.getAttribute("data-e");if(d)editDay
 function waNum(){var d=($("r_num").value||"").replace(/\D/g,"");if(d.charAt(0)==="0")d="234"+d.slice(1);return d}
 $("r_num").oninput=function(){try{localStorage.setItem("station_boss_num",$("r_num").value)}catch(e){}report()};
 try{$("r_num").value=localStorage.getItem("station_boss_num")||""}catch(e){}
-$("bk_copy").onclick=function(){var t="STATIONLEDGER:"+JSON.stringify(D),f=function(){$("bk_in").value=t;$("bk_msg").textContent="Copy was blocked. The backup is in the box below. Press and hold to copy it."};try{navigator.clipboard.writeText(t).then(function(){$("bk_msg").textContent="Backup copied. Paste it somewhere safe."},f)}catch(e){f()}};
-$("bk_res").onclick=function(){var t=$("bk_in").value.replace(/[\u201c\u201d]/g,'"').trim(),i0=t.indexOf("["),i1=t.lastIndexOf("]");if(i0<0||i1<i0){$("bk_msg").textContent="No backup found in the box. Paste the full copied text.";return}t=t.slice(i0,i1+1);
-try{var a=JSON.parse(t);if(!Array.isArray(a))throw 0;if(!RB){RB=true;$("bk_res").textContent="Tap again to replace all records";$("bk_msg").textContent="Found "+a.length+" days in the backup.";return}RB=false;$("bk_res").textContent="Restore from backup";D=a;store();render();quick(3);$("bk_msg").textContent="Restored "+a.length+" days. Check the Dashboard."}catch(e){$("bk_msg").textContent="The backup is cut off or damaged. Copy it again in full."}};var RB=false;
+$("bk_copy").onclick=function(){var t="STATIONLEDGER:"+JSON.stringify({days:D,debtors:DB,fills:GL}),f=function(){$("bk_in").value=t;$("bk_msg").textContent="Copy was blocked. The backup is in the box below. Press and hold to copy it."};try{navigator.clipboard.writeText(t).then(function(){$("bk_msg").textContent="Backup copied. Paste it somewhere safe."},f)}catch(e){f()}};
+$("bk_res").onclick=function(){var t=$("bk_in").value.replace(/[\u201c\u201d]/g,'"').trim(),i0=t.search(/[\[{]/),i1=Math.max(t.lastIndexOf("]"),t.lastIndexOf("}"));if(i0<0||i1<i0){$("bk_msg").textContent="No backup found in the box. Paste the full copied text.";return}t=t.slice(i0,i1+1);
+try{var a=JSON.parse(t);var dy=Array.isArray(a)?a:a.days;if(!Array.isArray(dy))throw 0;if(!RB){RB=true;$("bk_res").textContent="Tap again to replace all records";$("bk_msg").textContent="Found "+dy.length+" days in the backup.";return}RB=false;$("bk_res").textContent="Restore from backup";D=dy;store();if(!Array.isArray(a)){DB=a.debtors||[];dsave();if(a.fills&&a.fills.length){GL=a.fills;gsave()}}render();dbDraw();glDraw();quick(3);$("bk_msg").textContent="Restored "+dy.length+" days. Check the Dashboard."}catch(e){$("bk_msg").textContent="The backup is cut off or damaged. Copy it again in full."}};var RB=false;
 function gas(){var v=parseFloat($("g_v").value),d=parseFloat($("g_d").value),mx=parseFloat($("g_m").value),n=parseFloat($("g_now").value),tg=parseFloat($("g_tg").value),c=$("g_cap"),o=$("g_out");
 try{localStorage.setItem("station_gas_tank",JSON.stringify([$("g_v").value,$("g_d").value,$("g_m").value]))}catch(e){}
 if(isNaN(v)||isNaN(d)||v<=0||d<=0){c.textContent="Enter the tank volume and gas density.";o.textContent="";return}
@@ -242,6 +258,31 @@ if(GL.some(function(x){return x.d===d})){$("gl_msg").textContent="A refill is al
 GL.push({d:d,p:p});GL.sort(function(x,y){return x.d<y.d?-1:x.d>y.d?1:0});gsave();$("gl_a").value="";glDraw();var i=GL.findIndex(function(x){return x.d===d});$("gl_msg").textContent=(i>0&&cp)?"Saved. Gas added: "+K(addedAt(i,cp))+".":"Saved as the starting point."};
 function addLine(a,b){var cap=capKg();if(!cap)return"";GL.sort(function(x,y){return x.d<y.d?-1:x.d>y.d?1:0});var t=0,k=0;GL.forEach(function(x,i){if(i>0&&x.d>=a&&x.d<=b){t+=addedAt(i,cap);k++}});return k?"\nGas added (refill): "+K(t):""}
 $("gl_list").onclick=function(q){var i=q.target.getAttribute("data-g");if(i===null)return;if(q.target.getAttribute("data-s")){GL.splice(+i,1);gsave();glDraw()}else{q.target.setAttribute("data-s","1");q.target.textContent="Tap again"}};
+var DB=[];try{DB=JSON.parse(localStorage.getItem("station_debtors"))||[]}catch(e){DB=[]}
+function dsave(){try{localStorage.setItem("station_debtors",JSON.stringify(DB))}catch(e){}}
+function crOn(d){return DB.reduce(function(t,x){return t+(x.date===d?x.amt:0)},0)}
+function paidOf(x){return (x.pay||[]).reduce(function(t,p){return t+p.a},0)}
+function dbDraw(){var owe=0,n=0;DB.forEach(function(x){var b=x.amt-paidOf(x);if(b>0.5){owe+=b;n++}});
+$("db_sum").innerHTML='<div><span>Total owed to you</span><b class="'+(owe>0?'neg':'pos')+'">'+N(owe)+'</b></div><div><span>People who owe</span><b>'+n+'</b></div>';
+var opts="";DB.forEach(function(x,i){var b=x.amt-paidOf(x);if(b>0.5)opts+='<option value="'+i+'">'+esc(x.name)+' ('+N(b)+')</option>'});
+var cur=$("p_who").value;$("p_who").innerHTML=opts||'<option value="">No one owes</option>';if(cur)$("p_who").value=cur;
+var ord=DB.map(function(x,i){return i}).sort(function(a,b){return DB[a].date<DB[b].date?1:-1}),h="";
+ord.forEach(function(i){var x=DB[i],pd=paidOf(x),b=x.amt-pd;h+='<div style="padding:9px 0;border-bottom:1px solid var(--rule);font-size:14px"><div style="display:flex;justify-content:space-between;gap:8px"><b>'+esc(x.name)+'</b><span class="'+(b>0.5?'neg':'pos')+'">'+(b>0.5?N(b)+' owed':'Paid')+'</span></div><div class="note" style="margin:2px 0 0">'+fd(x.date)+': '+N(x.amt)+(x.note?' ('+esc(x.note)+')':'')+(pd?', paid '+N(pd):'')+'</div>';
+(x.pay||[]).forEach(function(p,j){h+='<div class="note" style="margin:2px 0 0">'+fd(p.d)+': paid '+N(p.a)+' by '+p.m+' <button class="x" data-xp="'+i+','+j+'">Remove</button></div>'});
+h+='<button class="x" data-x="'+i+'">Delete debtor</button></div>'});
+$("db_list").innerHTML=h||'<div class="note">No debtors yet.</div>'}
+$("db_d").value=$("p_d").value=new Date().toISOString().slice(0,10);
+$("db_add").onclick=function(){var a=ev($("db_a").value),nm=$("db_n").value.trim(),d=$("db_d").value;if(!d||!nm||isNaN(a)||a<=0){$("db_msg").textContent="Enter the date, the name and the amount owed.";return}
+DB.push({date:d,name:nm,amt:a,note:$("db_t").value.trim(),pay:[]});dsave();$("db_a").value="";$("db_n").value="";$("db_t").value="";$("db_msg").textContent="Saved.";dbDraw();render();prev()};
+$("p_add").onclick=function(){var i=parseInt($("p_who").value),a=ev($("p_a").value),d=$("p_d").value;if(isNaN(i)||!DB[i]){$("p_msg").textContent="Choose who paid.";return}
+if(!d||isNaN(a)||a<=0){$("p_msg").textContent="Enter the date and the amount paid.";return}
+var b=DB[i].amt-paidOf(DB[i]);if(a>b+0.5){$("p_msg").textContent="That is more than the "+N(b)+" owed.";return}
+DB[i].pay=DB[i].pay||[];DB[i].pay.push({d:d,a:a,m:$("p_m").value});dsave();$("p_a").value="";$("p_msg").textContent="Saved. "+N(b-a)+" still owed.";dbDraw()};
+$("db_list").onclick=function(q){var t=q.target,k=t.getAttribute("data-x"),kp=t.getAttribute("data-xp");if(k===null&&kp===null)return;
+if(!t.getAttribute("data-s")){t.setAttribute("data-s","1");t.textContent="Tap again";return}
+if(k!==null)DB.splice(+k,1);else{var ij=kp.split(",");DB[+ij[0]].pay.splice(+ij[1],1)}dsave();dbDraw();render();prev()};
+function drLine(a,b){var cr=0,pc=0,pt=0,owe=0;DB.forEach(function(x){if(x.date>=a&&x.date<=b)cr+=x.amt;(x.pay||[]).forEach(function(p){if(p.d>=a&&p.d<=b){if(p.m==="Cash")pc+=p.a;else pt+=p.a}});var bl=x.amt-paidOf(x);if(bl>0.5)owe+=bl});
+var s="";if(cr)s+="\nCredit given (debtors): "+N(cr);if(pc||pt)s+="\nDebtors paid: cash "+N(pc)+", transfer "+N(pt);if(owe)s+="\nTotal debtors owe now: "+N(owe);return s}
 var MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function fd(d){return +d.slice(8)+" "+MO[+d.slice(5,7)-1]+" "+d.slice(0,4)}
 function dv(v){return v<-0.5?N(-v)+" short":v>0.5?N(v)+" over":"balanced"}
@@ -256,13 +297,13 @@ lines.push(fd(e.date)+": "+L(c.l)+" L, expected "+N(c.exp)+", cash "+N(e.cash)+"
 ilist(lines,"Expenses",e.ex,e.out,e.en);ilist(lines,"Collected by boss",e.bc,e.bt,e.bn);ilist(lines,"Gas given on boss’s order",e.gv,e.bg,"");
 flags(s,i).forEach(function(f){if(f.indexOf("Short")!==0&&f.indexOf("Over")!==0)notes.push(fd(e.date)+": "+f)});
 if(e.note&&e.note!=="From notebook")notes.push(fd(e.date)+": "+e.note)});
-var x="RECORD OF SALES FROM "+fd(a||r[0].date).toUpperCase()+" TO "+fd(b||r[r.length-1].date).toUpperCase()+"\n\nKg sold: "+L(t.l)+"\nTotal sales: "+N(t.e)+"\nCash: "+N(t.c)+"\nPOS: "+N(t.p)+"\nTransfer: "+N(t.tr)+"\nExpenses: "+N(t.o)+"\nCollected by boss: "+N(t.bt)+"\nGas given on boss’s order: "+(t.bk?L(t.bk)+" kg, ":"")+N(t.bg)+"\nAccounted for: "+N(t.g)+"\nDifference: "+dv(t.g-t.e)+addLine(a||r[0].date,b||r[r.length-1].date)+gasLine(r[r.length-1].date);
+var x="RECORD OF SALES FROM "+fd(a||r[0].date).toUpperCase()+" TO "+fd(b||r[r.length-1].date).toUpperCase()+"\n\nKg sold: "+L(t.l)+"\nTotal sales: "+N(t.e)+"\nCash: "+N(t.c)+"\nPOS: "+N(t.p)+"\nTransfer: "+N(t.tr)+"\nExpenses: "+N(t.o)+"\nCollected by boss: "+N(t.bt)+"\nGas given on boss’s order: "+(t.bk?L(t.bk)+" kg, ":"")+N(t.bg)+"\nAccounted for: "+N(t.g)+"\nDifference: "+dv(t.g-t.e)+addLine(a||r[0].date,b||r[r.length-1].date)+gasLine(r[r.length-1].date)+drLine(a||r[0].date,b||r[r.length-1].date);
 o.textContent=x;$("r_wa").href="https://wa.me/"+waNum()+"?text="+encodeURIComponent(x);return x}
 $("r_copy").onclick=function(){var x=report();if(!x)return;try{navigator.clipboard.writeText(x).then(function(){$("r_msg").textContent="Copied. Paste it into WhatsApp or email."},function(){$("r_msg").textContent="Copy was blocked. Press and hold the message to copy it."})}catch(e){$("r_msg").textContent="Copy was blocked. Press and hold the message to copy it."}};
 var RM=false;["r_from","r_to"].forEach(function(i){$(i).oninput=function(){RM=true;report()}});
 $("r_q3").onclick=function(){RM=true;quick(3)};$("r_q7").onclick=function(){RM=true;quick(7)};$("r_all").onclick=function(){RM=true;quick(0)};
 var tabs=document.querySelectorAll("nav button");for(var i=0;i<tabs.length;i++)tabs[i].onclick=function(){for(var j=0;j<tabs.length;j++){tabs[j].className=tabs[j]===this?"on":"";$(tabs[j].getAttribute("data-t")).className=tabs[j]===this?"":"hide"}if(RM)report();else{quick(3);report()}glDraw()};
-load();render();drawItems();fillDefaults();tank();stock();gas();glDraw();quick(3);
+load();render();drawItems();fillDefaults();tank();stock();gas();glDraw();dbDraw();quick(3);
 if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
 </script>
 </body>
