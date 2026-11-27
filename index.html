@@ -42,7 +42,7 @@ nav{flex-wrap:wrap}nav button{font-size:13px;padding:11px 2px}.hide{display:none
 </head>
 <body>
 <h1>Station Ledger</h1>
-<nav><button data-t="dash" class="on">Dashboard</button><button data-t="add">Add day</button><button data-t="rep">Report</button><button data-t="tank">Tank</button><button data-t="db">Debtors</button><button data-t="bk">Backup</button></nav>
+<nav><button data-t="dash" class="on">Dashboard</button><button data-t="add">Add day</button><button data-t="rep">Report</button><button data-t="tank">Tank</button><button data-t="wk">Weekly</button><button data-t="db">Debtors</button><button data-t="bk">Backup</button></nav>
 
 <section id="dash"></section>
 
@@ -75,6 +75,9 @@ nav{flex-wrap:wrap}nav button{font-size:13px;padding:11px 2px}.hide{display:none
 <a class="btn alt" id="r_wa" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none">Send on WhatsApp</a>
 <div class="note" id="r_msg"></div></div>
 </section>
+
+<section id="wk" class="hide"><div id="wk_body"></div>
+<div class="card"><button class="btn" id="wk_copy">Copy weekly summary</button><a class="btn alt" id="wk_wa" target="_blank" rel="noopener" style="display:block;text-align:center;text-decoration:none">Send on WhatsApp</a><div class="note" id="wk_msg"></div></div></section>
 
 <section id="db" class="hide">
 <div class="card"><h2>Debtors</h2><div class="sum" id="db_sum"></div>
@@ -283,6 +286,30 @@ if(!t.getAttribute("data-s")){t.setAttribute("data-s","1");t.textContent="Tap ag
 if(k!==null)DB.splice(+k,1);else{var ij=kp.split(",");DB[+ij[0]].pay.splice(+ij[1],1)}dsave();dbDraw();render();prev()};
 function drLine(a,b){var cr=0,pc=0,pt=0,owe=0;DB.forEach(function(x){if(x.date>=a&&x.date<=b)cr+=x.amt;(x.pay||[]).forEach(function(p){if(p.d>=a&&p.d<=b){if(p.m==="Cash")pc+=p.a;else pt+=p.a}});var bl=x.amt-paidOf(x);if(bl>0.5)owe+=bl});
 var s="";if(cr)s+="\nCredit given (debtors): "+N(cr);if(pc||pt)s+="\nDebtors paid: cash "+N(pc)+", transfer "+N(pt);if(owe)s+="\nTotal debtors owe now: "+N(owe);return s}
+var WD=["Sun","Mon","Tue","Wed","Thu","Fri","Sat"],WKT="";
+function wkStart(d){var x=new Date(d+"T00:00:00Z"),w=(x.getUTCDay()+6)%7;x.setUTCDate(x.getUTCDate()-w);return x.toISOString().slice(0,10)}
+function bars(vals,labs){var mx=Math.max.apply(null,vals)||1,w=100/vals.length,s='<svg viewBox="0 0 100 46" width="100%" role="img">';vals.forEach(function(v,i){var bh=v/mx*30;s+='<rect x="'+(i*w+w*0.15)+'" y="'+(34-bh)+'" width="'+w*0.7+'" height="'+bh+'" rx="1" fill="var(--bar)"/><text x="'+(i*w+w/2)+'" y="'+(32-bh)+'" font-size="3.4" text-anchor="middle" fill="var(--ink)">'+Math.round(v)+'</text><text x="'+(i*w+w/2)+'" y="40" font-size="3.4" text-anchor="middle" fill="var(--mute)">'+labs[i]+'</text>'});return s+'</svg>'}
+function gasRem(date){var cap=capKg();if(!cap)return null;var f=null;GL.forEach(function(x){if(x.d<=date&&(!f||x.d>f.d))f=x});return f?cap*f.p/100-soldBw(f.d,date):null}
+function wkDraw(){var s=sorted(),b=$("wk_body");if(!s.length){b.innerHTML='<div class="card">No days yet. Add days to see your weekly chart.</div>';WKT="";return}
+var W={},wd=[0,0,0,0,0,0,0],wc=[0,0,0,0,0,0,0];
+s.forEach(function(e){var k=wkStart(e.date),c=calc(e),o=W[k]||(W[k]={kg:0,sales:0,diff:0,days:0}),dw=new Date(e.date+"T00:00:00Z").getUTCDay();o.kg+=c.l;o.sales+=c.exp;o.diff+=c.v;o.days++;wd[dw]+=c.l;wc[dw]++});
+var ks=Object.keys(W).sort(),k0=ks[ks.length-1],cu=W[k0],pv=ks.length>1?W[ks[ks.length-2]]:null,L8=ks.slice(-8);
+var ins=[],avg=cu.kg/cu.days;
+if(pv){var pa=pv.kg/pv.days,ch=pa?Math.round((avg-pa)/pa*1000)/10:0;ins.push("Average sales per day this week are "+(ch>=0?"up ":"down ")+Math.abs(ch)+"% on last week ("+L(avg)+" kg a day against "+L(pa)+").")}
+var av=[],labs=[],order=[1,2,3,4,5,6,0],best=-1,slow=-1,nd=0;order.forEach(function(d,i){var v=wc[d]?wd[d]/wc[d]:0;av.push(v);labs.push(WD[d]);if(wc[d]){nd++;if(best<0||v>av[best])best=i;if(slow<0||v<av[slow])slow=i}});
+if(nd>=4&&best!==slow)ins.push("Your best day is "+labs[best]+" ("+L(av[best])+" kg on average) and your slowest is "+labs[slow]+" ("+L(av[slow])+" kg). Try a small push on the slow day, such as telling regular customers or offering delivery.");
+if(cu.diff<-0.5)ins.push("You were short "+N(-cu.diff)+" this week. Check the days that show a shortage.");
+var owe=0;DB.forEach(function(x){var bl=x.amt-paidOf(x);if(bl>0.5)owe+=bl});
+if(owe>0)ins.push("Debtors owe "+N(owe)+(cu.sales?" ("+Math.round(owe/cu.sales*100)+"% of this week's sales)":"")+". Collect before giving more credit.");
+var last7=s.slice(-7),a7=last7.reduce(function(t,e){return t+kgOf(e)},0)/last7.length,rm=gasRem(s[s.length-1].date);
+if(rm!==null&&a7>0){var dl=Math.floor(rm/a7);ins.push("Gas left is "+K(rm)+". At about "+Math.round(a7)+" kg a day, that lasts roughly "+dl+" days."+(dl<=7?" Plan the next refill soon (maximum fill is 85%).":""))}
+var h='<div class="kpis"><div class="kpi"><small>Week of '+fd(k0).slice(0,-5)+': kg sold</small><b>'+L(cu.kg)+'</b></div><div class="kpi"><small>Sales</small><b>'+N(cu.sales)+'</b></div><div class="kpi"><small>Days recorded</small><b>'+cu.days+'</b></div><div class="kpi"><small>Difference</small><b class="'+(cu.diff<-0.5?"neg":"pos")+'">'+(cu.diff<0?"-":"")+N(Math.abs(cu.diff))+'</b></div></div>';
+h+='<div class="card"><h2>Kg sold per week</h2>'+bars(L8.map(function(k){return W[k].kg}),L8.map(function(k){return fd(k).slice(0,-5)}))+'</div><div class="card"><h2>Average kg by day of the week</h2>'+bars(av,labs)+'</div>';
+h+='<div class="card"><h2>What the numbers say</h2>'+(ins.length?ins.map(function(t){return '<p style="margin:0 0 10px">'+esc(t)+'</p>'}).join(""):'<div class="note">Record a few more days to see tips.</div>')+'<div class="note">These tips come from your own records. They are suggestions, not guarantees.</div></div>';
+b.innerHTML=h;
+WKT="WEEKLY SUMMARY, WEEK OF "+fd(k0).toUpperCase()+"\n\nKg sold: "+L(cu.kg)+"\nSales: "+N(cu.sales)+"\nDays recorded: "+cu.days+"\nDifference: "+dv(cu.diff)+(ins.length?"\n\n"+ins.map(function(t,i){return (i+1)+". "+t}).join("\n"):"");
+$("wk_wa").href="https://wa.me/"+waNum()+"?text="+encodeURIComponent(WKT)}
+$("wk_copy").onclick=function(){try{navigator.clipboard.writeText(WKT).then(function(){$("wk_msg").textContent="Copied."},function(){$("wk_msg").textContent="Copy was blocked."})}catch(e){$("wk_msg").textContent="Copy was blocked."}};
 var MO=["Jan","Feb","Mar","Apr","May","Jun","Jul","Aug","Sep","Oct","Nov","Dec"];
 function fd(d){return +d.slice(8)+" "+MO[+d.slice(5,7)-1]+" "+d.slice(0,4)}
 function dv(v){return v<-0.5?N(-v)+" short":v>0.5?N(v)+" over":"balanced"}
@@ -302,7 +329,7 @@ o.textContent=x;$("r_wa").href="https://wa.me/"+waNum()+"?text="+encodeURICompon
 $("r_copy").onclick=function(){var x=report();if(!x)return;try{navigator.clipboard.writeText(x).then(function(){$("r_msg").textContent="Copied. Paste it into WhatsApp or email."},function(){$("r_msg").textContent="Copy was blocked. Press and hold the message to copy it."})}catch(e){$("r_msg").textContent="Copy was blocked. Press and hold the message to copy it."}};
 var RM=false;["r_from","r_to"].forEach(function(i){$(i).oninput=function(){RM=true;report()}});
 $("r_q3").onclick=function(){RM=true;quick(3)};$("r_q7").onclick=function(){RM=true;quick(7)};$("r_all").onclick=function(){RM=true;quick(0)};
-var tabs=document.querySelectorAll("nav button");for(var i=0;i<tabs.length;i++)tabs[i].onclick=function(){for(var j=0;j<tabs.length;j++){tabs[j].className=tabs[j]===this?"on":"";$(tabs[j].getAttribute("data-t")).className=tabs[j]===this?"":"hide"}if(RM)report();else{quick(3);report()}glDraw()};
+var tabs=document.querySelectorAll("nav button");for(var i=0;i<tabs.length;i++)tabs[i].onclick=function(){for(var j=0;j<tabs.length;j++){tabs[j].className=tabs[j]===this?"on":"";$(tabs[j].getAttribute("data-t")).className=tabs[j]===this?"":"hide"}if(RM)report();else{quick(3);report()}glDraw();wkDraw()};
 load();render();drawItems();fillDefaults();tank();stock();gas();glDraw();dbDraw();quick(3);
 if("serviceWorker" in navigator){window.addEventListener("load",function(){navigator.serviceWorker.register("sw.js").catch(function(){})})}
 </script>
