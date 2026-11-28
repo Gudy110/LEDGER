@@ -103,12 +103,12 @@ nav{flex-wrap:wrap}nav button{font-size:13px;padding:11px 2px}.hide{display:none
 
 <section id="tank" class="hide">
 <div class="card"><h2>Gas tank</h2>
-<div class="row"><div><label>Tank volume (litres)</label><input id="g_v" inputmode="decimal" value="10500"></div><div><label>Gas density (kg per litre)</label><input id="g_d" inputmode="decimal" value="0.54"></div></div>
+<div class="row"><div><label>Tank volume (litres)</label><input id="g_v" inputmode="decimal" value="10500"></div><div><label>Gas density (kg per litre)</label><input id="g_d" inputmode="decimal" value="0.60"></div></div>
 <label>Maximum fill (%)</label><input id="g_m" inputmode="decimal" value="85">
 <div class="sum" id="g_cap"></div>
 <div class="row"><div><label>Gauge reading now (%)</label><input id="g_now" inputmode="decimal"></div><div><label>Fill up to (%)</label><input id="g_tg" inputmode="decimal" value="85"></div></div>
 <div class="sum" id="g_out">Enter the gauge reading.</div>
-<div class="note">Volume and maximum fill are from the tank plate. The density of 0.54 kg per litre is a typical LPG figure, not measured, so change it if your supplier gives another. This assumes the gauge reads evenly by volume.</div></div>
+<div class="note">Volume and maximum fill are from the tank plate. The 0.60 kg per litre is a calibration figure, set so the app matches your gauge after the 18 Nov refill. It is not the true density of the gas. Change it if the app and the gauge drift apart. This assumes the gauge reads evenly by volume.</div></div>
 <div class="card"><h2>Gas left in the tank</h2>
 <div class="sum" id="gl_sum"></div>
 <h2 style="margin:14px 0 6px">Day by day</h2><div class="tw"><table id="gl_tab" style="min-width:0"></table></div>
@@ -219,7 +219,7 @@ $("bk_copy").onclick=function(){var t="STATIONLEDGER:"+JSON.stringify({days:D,de
 $("bk_res").onclick=function(){var t=$("bk_in").value.replace(/[\u201c\u201d]/g,'"').trim(),i0=t.search(/[\[{]/),i1=Math.max(t.lastIndexOf("]"),t.lastIndexOf("}"));if(i0<0||i1<i0){$("bk_msg").textContent="No backup found in the box. Paste the full copied text.";return}t=t.slice(i0,i1+1);
 try{var a=JSON.parse(t);var dy=Array.isArray(a)?a:a.days;if(!Array.isArray(dy))throw 0;if(!RB){RB=true;$("bk_res").textContent="Tap again to replace all records";$("bk_msg").textContent="Found "+dy.length+" days in the backup.";return}RB=false;$("bk_res").textContent="Restore from backup";D=dy;store();if(!Array.isArray(a)){DB=a.debtors||[];dsave();if(a.fills&&a.fills.length){GL=a.fills;gsave()}}render();dbDraw();glDraw();quick(3);$("bk_msg").textContent="Restored "+dy.length+" days. Check the Dashboard."}catch(e){$("bk_msg").textContent="The backup is cut off or damaged. Copy it again in full."}};var RB=false;
 function gas(){var v=parseFloat($("g_v").value),d=parseFloat($("g_d").value),mx=parseFloat($("g_m").value),n=parseFloat($("g_now").value),tg=parseFloat($("g_tg").value),c=$("g_cap"),o=$("g_out");
-try{localStorage.setItem("station_gas_tank",JSON.stringify([$("g_v").value,$("g_d").value,$("g_m").value]))}catch(e){}
+try{localStorage.setItem("station_gas_tank2",JSON.stringify([$("g_v").value,$("g_d").value,$("g_m").value]))}catch(e){}
 if(isNaN(v)||isNaN(d)||v<=0||d<=0){c.textContent="Enter the tank volume and gas density.";o.textContent="";return}
 var cap=v*d,f=function(x){return Math.round(x).toLocaleString("en-NG")+" kg ("+(Math.round(x)/1000).toFixed(2)+" t)"};
 c.innerHTML='<div><span>Full tank (100%)</span><b>'+f(cap)+'</b></div><div><span>Each 1% is about</span><b>'+Math.round(cap/100)+' kg</b></div>'+(mx?'<div><span>At maximum fill ('+mx+'%)</span><b>'+f(cap*mx/100)+'</b></div>':'');
@@ -230,7 +230,7 @@ if(!isNaN(tg)&&tg>n&&tg<=100)h+='<div><span>To reach '+tg+'%, add</span><b>'+f(c
 if(mx&&n>mx)h+='<div><span>Above the maximum fill on the plate.</span></div>';
 o.innerHTML=h}
 ["g_v","g_d","g_m","g_now","g_tg"].forEach(function(i){$(i).oninput=function(){gas();glDraw()}});
-try{var gc=JSON.parse(localStorage.getItem("station_gas_tank"));if(gc){$("g_v").value=gc[0];$("g_d").value=gc[1];$("g_m").value=gc[2]}}catch(e){}
+try{var gc=JSON.parse(localStorage.getItem("station_gas_tank2"));if(gc){$("g_v").value=gc[0];$("g_d").value=gc[1];$("g_m").value=gc[2]}}catch(e){}
 var GL=[];try{GL=JSON.parse(localStorage.getItem("station_gas_fills"))||[]}catch(e){GL=[]}
 if(!GL.length)GL=[{d:"2026-11-18",p:56}];
 function kgOf(e){var d=e.close-e.open;return d>0?d:0}
